@@ -37,19 +37,18 @@ export function registerCallbackHandlers(bot) {
 
     let event;
     try {
-      event = await createCalendarEvent(entry.fields);
+      event = await createCalendarEvent(entry.fields, entry.sourceUrl);
     } catch (error) {
       log("confirm", `calendar insert failed for ${id}: ${error.message}`);
-      await ctx.editMessageText(`Failed to create the calendar event: ${error.message}`);
+      await ctx.reply(`Failed to create the calendar event: ${error.message}`);
       return;
     }
 
     deletePending(id);
-
-    await ctx.editMessageText(
-      `Added to the calendar:\n\n${formatFieldsSummary(entry.fields)}\n\n${event.htmlLink}`,
-      { parse_mode: "Markdown" }
-    );
+    // Leave the preview message as-is (with the extracted details) and just
+    // drop its buttons, rather than overwriting it — the details stay visible.
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    await ctx.reply(`Added to the calendar: ${event.htmlLink}`);
 
     await notifyAdminIfNeeded(ctx, entry, event);
   });
@@ -58,7 +57,8 @@ export function registerCallbackHandlers(bot) {
     const id = ctx.match[1];
     deletePending(id);
     await ctx.answerCbQuery("Cancelled.");
-    await ctx.editMessageText("Cancelled — nothing was added to the calendar.");
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    await ctx.reply("Cancelled — nothing was added to the calendar.");
   });
 
   bot.action(/^edit:(.+)$/, async (ctx) => {

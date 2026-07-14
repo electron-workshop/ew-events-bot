@@ -16,12 +16,13 @@ async function getCalendarClient() {
   return calendarClient;
 }
 
-function buildEventResource(fields) {
+function buildEventResource(fields, sourceUrl) {
   const { title, description, date, time, location, register_link } = fields;
 
   const descriptionParts = [];
   if (description) descriptionParts.push(description);
   if (register_link) descriptionParts.push(`Register: ${register_link}`);
+  if (sourceUrl && sourceUrl !== register_link) descriptionParts.push(`Original link: ${sourceUrl}`);
 
   const resource = {
     summary: title,
@@ -53,9 +54,9 @@ function buildEventResource(fields) {
  * Creates an event on the configured calendar. Returns the created
  * event's htmlLink so it can be shared back to the requester.
  */
-export async function createCalendarEvent(fields) {
+export async function createCalendarEvent(fields, sourceUrl) {
   const calendar = await getCalendarClient();
-  const resource = buildEventResource(fields);
+  const resource = buildEventResource(fields, sourceUrl);
   log("calendar", "inserting event:", resource);
 
   const { data } = await calendar.events.insert({

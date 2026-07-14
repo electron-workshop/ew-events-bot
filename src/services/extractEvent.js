@@ -11,7 +11,23 @@ const ALL_FIELDS = [
   "register_link",
 ];
 
-const SYSTEM_PROMPT = `You extract event details from webpage text. Respond with ONLY a JSON object with these exact keys: title, description, date, time, location, register_link. Use null for any field you cannot find — never guess or invent a value. Dates should be in YYYY-MM-DD format if a year is present; if no year is stated, assume the nearest upcoming occurrence. Times should be in 24-hour HH:MM format. register_link should be a URL if the page has a registration/RSVP/ticket link, otherwise the source page URL, otherwise null.`;
+const SYSTEM_PROMPT = `You extract event details from webpage text. Respond with ONLY a JSON object with these exact keys: title, description, date, time, location, register_link. Use JSON null (not the string "null") for any field you cannot find — never guess or invent a value. Dates should be in YYYY-MM-DD format if a year is present; if no year is stated, assume the nearest upcoming occurrence. Times should be in 24-hour HH:MM format. register_link should be a URL if the page has a registration/RSVP/ticket link, otherwise the source page URL, otherwise null.`;
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// The model occasionally emits the literal string "null" (or other junk)
+// instead of a real JSON null. Normalize those away so callers only ever
+// see a real null or a validly-shaped value.
+function cleanField(key, value) {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "" || trimmed.toLowerCase() === "null") return null;
+    if (key === "time" && !TIME_PATTERN.test(trimmed)) return null;
+    return trimmed;
+  }
+  return value;
+}
 
 /**
  * Sends page text to the local Ollama model and returns extracted fields.
@@ -41,7 +57,12 @@ export async function extractEvent(pageText, sourceUrl) {
   }
 
   const data = await response.json();
-  log("ollama", "full response object:\n" + JSON.stringify(data, null, 2));
+  const { context, ...dataWithoutContext } = data;
+  log(
+    "ollama",
+    `response (context omitted, ${Array.isArray(context) ? context.length : 0} tokens):\n` +
+      JSON.stringify(dataWithoutContext, null, 2)
+  );
 
   const rawText = data.response ?? "";
   let parsed;
@@ -58,7 +79,7 @@ export async function extractEvent(pageText, sourceUrl) {
 
   const fields = {};
   for (const key of ALL_FIELDS) {
-    fields[key] = parsed[key] ?? null;
+    fields[key] = cleanField(key, parsed[key] ?? null);
   }
 
   const complete = REQUIRED_FIELDS.every((key) => fields[key]);
