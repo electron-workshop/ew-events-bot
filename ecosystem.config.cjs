@@ -1,9 +1,9 @@
-export default {
+module.exports = {
   apps: [
     {
       name: "ew-events-bot",
       script: "src/index.js",
-      cwd: import.meta.dirname,
+      cwd: __dirname,
       interpreter: "node",
       env: {
         NODE_ENV: "production",

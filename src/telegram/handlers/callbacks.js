@@ -7,6 +7,7 @@ import {
   setEditMessageId,
 } from "../../store/pendingEvents.js";
 import { formatFieldsSummary, EDIT_INSTRUCTIONS } from "../formatEvent.js";
+import { log } from "../../logger.js";
 
 async function notifyAdminIfNeeded(ctx, entry, event) {
   if (!config.adminChatId) return;
@@ -25,7 +26,9 @@ export function registerCallbackHandlers(bot) {
   bot.action(/^confirm:(.+)$/, async (ctx) => {
     const id = ctx.match[1];
     const entry = getPending(id);
+    log("confirm", `pending ${id} confirmed by ${ctx.from.id}`);
     if (!entry) {
+      log("confirm", `pending ${id} not found (expired?)`);
       await ctx.answerCbQuery("This request has expired.");
       return;
     }
@@ -36,6 +39,7 @@ export function registerCallbackHandlers(bot) {
     try {
       event = await createCalendarEvent(entry.fields);
     } catch (error) {
+      log("confirm", `calendar insert failed for ${id}: ${error.message}`);
       await ctx.editMessageText(`Failed to create the calendar event: ${error.message}`);
       return;
     }

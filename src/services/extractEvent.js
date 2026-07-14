@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { log } from "../logger.js";
 
 const REQUIRED_FIELDS = ["title", "date"];
 const ALL_FIELDS = [
@@ -19,6 +20,7 @@ const SYSTEM_PROMPT = `You extract event details from webpage text. Respond with
  * "couldn't extract enough detail automatically".
  */
 export async function extractEvent(pageText, sourceUrl) {
+  log("ollama", `POST ${config.ollamaHost}/api/generate model=${config.ollamaModel}`);
   const response = await fetch(`${config.ollamaHost}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -32,10 +34,14 @@ export async function extractEvent(pageText, sourceUrl) {
   });
 
   if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    log("ollama", `request failed: ${response.status} ${response.statusText} — ${body}`);
     throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
+  log("ollama", "raw response:", data.response);
+
   let parsed;
   try {
     parsed = JSON.parse(data.response);

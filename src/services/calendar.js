@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { config } from "../config.js";
+import { log } from "../logger.js";
 
 let calendarClient = null;
 
@@ -55,11 +56,13 @@ function buildEventResource(fields) {
 export async function createCalendarEvent(fields) {
   const calendar = await getCalendarClient();
   const resource = buildEventResource(fields);
+  log("calendar", "inserting event:", resource);
 
   const { data } = await calendar.events.insert({
     calendarId: config.googleCalendarId,
     requestBody: resource,
   });
 
+  log("calendar", `created event ${data.id}: ${data.htmlLink}`);
   return data;
 }
