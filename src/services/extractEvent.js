@@ -11,7 +11,9 @@ const ALL_FIELDS = [
   "register_link",
 ];
 
-const SYSTEM_PROMPT = `You extract event details from webpage text. Respond with ONLY a JSON object with these exact keys: title, description, date, time, location, register_link. Use JSON null (not the string "null") for any field you cannot find — never guess or invent a value. Dates should be in YYYY-MM-DD format if a year is present; if no year is stated, assume the nearest upcoming occurrence. Times should be in 24-hour HH:MM format. register_link should be a URL if the page has a registration/RSVP/ticket link, otherwise the source page URL, otherwise null.`;
+const SYSTEM_PROMPT = `You extract event details from webpage text. Respond with ONLY a JSON object with these exact keys: title, description, date, time, location, register_link. Use JSON null (not the string "null") for any field you cannot find — never guess or invent a value. Dates should be in YYYY-MM-DD format if a year is present; if no year is stated, assume the nearest upcoming occurrence. Times should be in 24-hour HH:MM format. register_link should be a URL if the page has a registration/RSVP/ticket link, otherwise the source page URL, otherwise null.
+
+If the page provides "Structured event data" with a startDate/endDate in ISO 8601 format (e.g. "2026-07-14T17:00:00.000+10:00"), that is the authoritative source for date and time — take the date and time-of-day exactly as written in it (ignore the timezone offset, just read the local wall-clock date and time shown), and prefer it over any date/time mentioned in the page text.`;
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -37,6 +39,7 @@ function cleanField(key, value) {
  */
 export async function extractEvent(pageText, sourceUrl) {
   log("ollama", `POST ${config.ollamaHost}/api/generate model=${config.ollamaModel}`);
+  log("ollama", `page text sent to model (${pageText.length} chars):\n${pageText}`);
   const response = await fetch(`${config.ollamaHost}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -47,6 +50,9 @@ export async function extractEvent(pageText, sourceUrl) {
       format: "json",
       stream: false,
       think: false,
+      // Extraction should be deterministic, not creative — same page in
+      // should reliably give the same fields out.
+      options: { temperature: 0, seed: 42 },
     }),
   });
 
