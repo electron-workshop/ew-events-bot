@@ -1,8 +1,14 @@
+import { computeEndTime } from "../services/eventTime.js";
+
 export function formatFieldsSummary(fields) {
+  const timeLine = fields.time
+    ? `${fields.time} – ${computeEndTime(fields.time)}`
+    : "— (all day)";
+
   const lines = [
     `*Title:* ${fields.title || "—"}`,
     `*Date:* ${fields.date || "—"}`,
-    `*Time:* ${fields.time || "—"}`,
+    `*Time:* ${timeLine}`,
     `*Location:* ${fields.location || "—"}`,
     `*Register link:* ${fields.register_link || "—"}`,
   ];

@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { config } from "../config.js";
 import { log } from "../logger.js";
+import { computeEndTime } from "./eventTime.js";
 
 let calendarClient = null;
 
@@ -31,15 +32,9 @@ function buildEventResource(fields, sourceUrl) {
   };
 
   if (time) {
-    const startDateTime = `${date}T${time}:00`;
-    resource.start = { dateTime: startDateTime, timeZone: config.timezone };
+    resource.start = { dateTime: `${date}T${time}:00`, timeZone: config.timezone };
     // Default to a 2-hour event when no end time is known.
-    const [hours, minutes] = time.split(":").map(Number);
-    const end = new Date(0);
-    end.setUTCHours(hours + 2, minutes);
-    const endTime = `${String(end.getUTCHours()).padStart(2, "0")}:${String(
-      end.getUTCMinutes()
-    ).padStart(2, "0")}`;
+    const endTime = computeEndTime(time);
     resource.end = { dateTime: `${date}T${endTime}:00`, timeZone: config.timezone };
   } else {
     // All-day event when no time was found.
