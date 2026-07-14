@@ -30,6 +30,7 @@ export async function extractEvent(pageText, sourceUrl) {
       prompt: `Source URL: ${sourceUrl}\n\nPage text:\n${pageText}`,
       format: "json",
       stream: false,
+      think: false,
     }),
   });
 
@@ -40,14 +41,20 @@ export async function extractEvent(pageText, sourceUrl) {
   }
 
   const data = await response.json();
-  log("ollama", "raw response:", data.response);
+  log("ollama", "full response object:\n" + JSON.stringify(data, null, 2));
 
+  const rawText = data.response ?? "";
   let parsed;
   try {
-    parsed = JSON.parse(data.response);
+    parsed = JSON.parse(rawText);
   } catch {
+    log(
+      "ollama",
+      `couldn't parse response as JSON — done=${data.done}, done_reason=${data.done_reason}, response length=${rawText.length}\nraw "response" field:\n${rawText}`
+    );
     throw new Error("Ollama returned non-JSON output");
   }
+  log("ollama", "parsed fields:\n" + JSON.stringify(parsed, null, 2));
 
   const fields = {};
   for (const key of ALL_FIELDS) {

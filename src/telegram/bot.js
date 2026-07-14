@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { handleAddEvent } from "./commands/addEvent.js";
 import { registerCallbackHandlers } from "./handlers/callbacks.js";
 import { registerReplyHandler } from "./handlers/replies.js";
+import { registerAwaitingLinkHandler } from "./handlers/awaitingLink.js";
 
 export function createBot() {
   const bot = new Telegraf(config.telegramBotToken);
@@ -10,6 +11,7 @@ export function createBot() {
   bot.command("add_event", handleAddEvent);
   registerCallbackHandlers(bot);
   registerReplyHandler(bot);
+  registerAwaitingLinkHandler(bot);
 
   bot.catch((error, ctx) => {
     console.error("Unhandled bot error:", error);
