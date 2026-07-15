@@ -1,6 +1,7 @@
 import { Markup } from "telegraf";
 import { getCalendarEvent } from "../../services/calendar.js";
 import { addReminder } from "../../store/reminders.js";
+import { resolveEventRef } from "../../store/eventRefs.js";
 import { log } from "../../logger.js";
 
 function eventStartIso(event) {
@@ -9,8 +10,14 @@ function eventStartIso(event) {
 
 export function registerReminderHandlers(bot) {
   bot.action(/^remind:(.+)$/, async (ctx) => {
-    const eventId = ctx.match[1];
-    log("reminders", `remind button tapped for event ${eventId} by ${ctx.from.id}`);
+    const ref = ctx.match[1];
+    const eventId = resolveEventRef(ref);
+    log("reminders", `remind button tapped for ref ${ref} by ${ctx.from.id}`);
+
+    if (!eventId) {
+      await ctx.answerCbQuery("This has expired — run /today, /week, or /month again.");
+      return;
+    }
 
     let event;
     try {
@@ -25,15 +32,21 @@ export function registerReminderHandlers(bot) {
     await ctx.reply(
       `When would you like to be reminded about "${event.summary}"?`,
       Markup.inlineKeyboard([
-        Markup.button.callback("1 day before", `remind_set:${eventId}:1d`),
-        Markup.button.callback("1 week before", `remind_set:${eventId}:1w`),
+        Markup.button.callback("1 day before", `remind_set:${ref}:1d`),
+        Markup.button.callback("1 week before", `remind_set:${ref}:1w`),
       ])
     );
   });
 
   bot.action(/^remind_set:(.+):(1d|1w)$/, async (ctx) => {
-    const eventId = ctx.match[1];
+    const ref = ctx.match[1];
     const leadTime = ctx.match[2];
+    const eventId = resolveEventRef(ref);
+
+    if (!eventId) {
+      await ctx.answerCbQuery("This has expired — run /today, /week, or /month again.");
+      return;
+    }
 
     let event;
     try {

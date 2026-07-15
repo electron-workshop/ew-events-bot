@@ -1,5 +1,6 @@
 import { Markup } from "telegraf";
 import { listUpcomingEvents } from "../../services/calendar.js";
+import { createEventRef } from "../../store/eventRefs.js";
 import { log } from "../../logger.js";
 
 const RANGES = {
@@ -50,9 +51,10 @@ function makeListHandler(rangeKey) {
       (events.length > shown.length ? `\n\n...and ${events.length - shown.length} more.` : "") +
       `\n\nTap 🔔 to get reminded before one of these.`;
 
-    const buttons = shown.map((event, i) =>
-      Markup.button.callback(`🔔 ${i + 1}`, `remind:${event.id}`)
-    );
+    const buttons = shown.map((event, i) => {
+      const ref = createEventRef(event.id);
+      return Markup.button.callback(`🔔 ${i + 1}`, `remind:${ref}`);
+    });
     const rows = [];
     for (let i = 0; i < buttons.length; i += 5) {
       rows.push(buttons.slice(i, i + 5));
