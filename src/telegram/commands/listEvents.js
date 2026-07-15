@@ -1,13 +1,17 @@
 import { Markup } from "telegraf";
 import { listUpcomingEvents } from "../../services/calendar.js";
 import { createEventRef } from "../../store/eventRefs.js";
+import { getDayWindow } from "../../services/timeWindows.js";
 import { config } from "../../config.js";
 import { log } from "../../logger.js";
 
+const rollingWindow = (ms) => (now) => ({ start: now, end: new Date(now.getTime() + ms) });
+
 const RANGES = {
-  today: { label: "next 24 hours", ms: 24 * 60 * 60 * 1000 },
-  week: { label: "next 7 days", ms: 7 * 24 * 60 * 60 * 1000 },
-  month: { label: "next 30 days", ms: 30 * 24 * 60 * 60 * 1000 },
+  today: { label: "in the next 24 hours", getWindow: rollingWindow(24 * 60 * 60 * 1000) },
+  tomorrow: { label: "tomorrow", getWindow: () => getDayWindow(1) },
+  week: { label: "in the next 7 days", getWindow: rollingWindow(7 * 24 * 60 * 60 * 1000) },
+  month: { label: "in the next 30 days", getWindow: rollingWindow(30 * 24 * 60 * 60 * 1000) },
 };
 
 const MAX_EVENTS_SHOWN = 25;
@@ -49,17 +53,17 @@ function makeListHandler(rangeKey) {
   return async function handleList(ctx) {
     log("list_events", `${rangeKey} requested by ${ctx.from.id} in chat ${ctx.chat.id}`);
 
-    const now = new Date();
-    const events = await listUpcomingEvents(now, new Date(now.getTime() + range.ms));
+    const { start, end } = range.getWindow(new Date());
+    const events = await listUpcomingEvents(start, end);
 
     if (events.length === 0) {
-      await ctx.reply(`No upcoming events in the ${range.label}.`);
+      await ctx.reply(`No upcoming events ${range.label}.`);
       return;
     }
 
     const shown = events.slice(0, MAX_EVENTS_SHOWN);
 
-    const lines = [`📅 Events in the ${range.label}:`];
+    const lines = [`📅 Events ${range.label}:`];
     const buttons = [];
     let currentDayKey = null;
     let num = 0;
@@ -94,5 +98,6 @@ function makeListHandler(rangeKey) {
 }
 
 export const handleToday = makeListHandler("today");
+export const handleTomorrow = makeListHandler("tomorrow");
 export const handleWeek = makeListHandler("week");
 export const handleMonth = makeListHandler("month");
