@@ -62,3 +62,29 @@ export async function createCalendarEvent(fields, sourceUrl) {
   log("calendar", `created event ${data.id}: ${data.htmlLink}`);
   return data;
 }
+
+/**
+ * Lists events starting between timeMin and timeMax (both Date objects),
+ * earliest first.
+ */
+export async function listUpcomingEvents(timeMin, timeMax) {
+  const calendar = await getCalendarClient();
+  const { data } = await calendar.events.list({
+    calendarId: config.googleCalendarId,
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: true,
+    orderBy: "startTime",
+  });
+  return data.items || [];
+}
+
+/** Fetches a single event by its Google Calendar event ID. */
+export async function getCalendarEvent(eventId) {
+  const calendar = await getCalendarClient();
+  const { data } = await calendar.events.get({
+    calendarId: config.googleCalendarId,
+    eventId,
+  });
+  return data;
+}
