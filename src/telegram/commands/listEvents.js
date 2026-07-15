@@ -1,6 +1,7 @@
 import { Markup } from "telegraf";
 import { listUpcomingEvents } from "../../services/calendar.js";
 import { createEventRef } from "../../store/eventRefs.js";
+import { config } from "../../config.js";
 import { log } from "../../logger.js";
 
 const RANGES = {
@@ -11,23 +12,35 @@ const RANGES = {
 
 const MAX_EVENTS_SHOWN = 25;
 
-const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-AU", {
-  weekday: "short",
+// "en-CA" conveniently formats as YYYY-MM-DD, handy as a grouping key.
+const DAY_KEY_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: config.timezone,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const DAY_HEADER_FORMAT = new Intl.DateTimeFormat("en-AU", {
+  timeZone: config.timezone,
+  weekday: "long",
   day: "numeric",
   month: "short",
 });
 const TIME_FORMAT = new Intl.DateTimeFormat("en-AU", {
+  timeZone: config.timezone,
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
 });
 
-function formatEventLine(event) {
-  if (event.start.date) {
-    return `${WEEKDAY_FORMAT.format(new Date(event.start.date))} (all day) — ${event.summary}`;
-  }
-  const start = new Date(event.start.dateTime);
-  return `${WEEKDAY_FORMAT.format(start)}, ${TIME_FORMAT.format(start)} — ${event.summary}`;
+function eventStartDate(event) {
+  return event.start.dateTime ? new Date(event.start.dateTime) : new Date(`${event.start.date}T00:00:00`);
+}
+
+function formatEventTime(event) {
+  if (!event.start.dateTime) return "all day";
+  const start = TIME_FORMAT.format(new Date(event.start.dateTime));
+  const end = event.end?.dateTime ? TIME_FORMAT.format(new Date(event.end.dateTime)) : null;
+  return end ? `${start}–${end}` : start;
 }
 
 function makeListHandler(rangeKey) {
@@ -45,22 +58,38 @@ function makeListHandler(rangeKey) {
     }
 
     const shown = events.slice(0, MAX_EVENTS_SHOWN);
-    const lines = shown.map((event, i) => `${i + 1}. ${formatEventLine(event)}`);
-    const text =
-      `Events in the ${range.label}:\n\n${lines.join("\n")}` +
-      (events.length > shown.length ? `\n\n...and ${events.length - shown.length} more.` : "") +
-      `\n\nTap 🔔 to get reminded before one of these.`;
 
-    const buttons = shown.map((event, i) => {
+    const lines = [`📅 Events in the ${range.label}:`];
+    const buttons = [];
+    let currentDayKey = null;
+    let num = 0;
+
+    for (const event of shown) {
+      const startDate = eventStartDate(event);
+      const dayKey = DAY_KEY_FORMAT.format(startDate);
+      if (dayKey !== currentDayKey) {
+        currentDayKey = dayKey;
+        lines.push("", `── ${DAY_HEADER_FORMAT.format(startDate)} ──`);
+      }
+
+      num += 1;
+      lines.push(`${num}. ${formatEventTime(event)}  ${event.summary}`);
+
       const ref = createEventRef(event.id);
-      return Markup.button.callback(`🔔 ${i + 1}`, `remind:${ref}`);
-    });
+      buttons.push(Markup.button.callback(`🔔 ${num}`, `remind:${ref}`));
+    }
+
+    if (events.length > shown.length) {
+      lines.push("", `...and ${events.length - shown.length} more.`);
+    }
+    lines.push("", "Tap 🔔 below to get reminded before one of these.");
+
     const rows = [];
     for (let i = 0; i < buttons.length; i += 5) {
       rows.push(buttons.slice(i, i + 5));
     }
 
-    await ctx.reply(text, Markup.inlineKeyboard(rows));
+    await ctx.reply(lines.join("\n"), Markup.inlineKeyboard(rows));
   };
 }
 

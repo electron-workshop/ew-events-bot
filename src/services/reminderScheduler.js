@@ -1,7 +1,7 @@
-import { getDueReminders, markNotified, pruneStaleReminders } from "../store/reminders.js";
+import { getDueReminders, markNotified, pruneStaleReminders, LEAD_LABELS } from "../store/reminders.js";
 import { log } from "../logger.js";
 
-const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes — reminders are day/week granularity, no need to poll faster
+const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes — fine-grained enough even for the 1-hour-before lead time
 
 async function checkReminders(bot) {
   const due = getDueReminders();
@@ -10,7 +10,7 @@ async function checkReminders(bot) {
   }
 
   for (const reminder of due) {
-    const leadLabel = reminder.leadTime === "1d" ? "1 day" : "1 week";
+    const leadLabel = LEAD_LABELS[reminder.leadTime];
     try {
       await bot.telegram.sendMessage(
         reminder.chatId,

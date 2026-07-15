@@ -6,8 +6,15 @@ import { log } from "../logger.js";
 const FILE_PATH = path.join(new URL("../data/", import.meta.url).pathname, "reminders.json");
 
 export const LEAD_TIME_MS = {
+  "1h": 60 * 60 * 1000,
   "1d": 24 * 60 * 60 * 1000,
   "1w": 7 * 24 * 60 * 60 * 1000,
+};
+
+export const LEAD_LABELS = {
+  "1h": "1 hour",
+  "1d": "1 day",
+  "1w": "1 week",
 };
 
 function load() {

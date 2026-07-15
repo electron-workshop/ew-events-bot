@@ -1,6 +1,6 @@
 import { Markup } from "telegraf";
 import { getCalendarEvent } from "../../services/calendar.js";
-import { addReminder } from "../../store/reminders.js";
+import { addReminder, LEAD_LABELS } from "../../store/reminders.js";
 import { resolveEventRef } from "../../store/eventRefs.js";
 import { log } from "../../logger.js";
 
@@ -32,13 +32,22 @@ export function registerReminderHandlers(bot) {
     await ctx.reply(
       `When would you like to be reminded about "${event.summary}"?`,
       Markup.inlineKeyboard([
-        Markup.button.callback("1 day before", `remind_set:${ref}:1d`),
-        Markup.button.callback("1 week before", `remind_set:${ref}:1w`),
+        [
+          Markup.button.callback("1 hour before", `remind_set:${ref}:1h`),
+          Markup.button.callback("1 day before", `remind_set:${ref}:1d`),
+          Markup.button.callback("1 week before", `remind_set:${ref}:1w`),
+        ],
+        [Markup.button.callback("Cancel", "remind_cancel")],
       ])
     );
   });
 
-  bot.action(/^remind_set:(.+):(1d|1w)$/, async (ctx) => {
+  bot.action("remind_cancel", async (ctx) => {
+    await ctx.answerCbQuery("Cancelled.");
+    await ctx.editMessageText("No reminder set.");
+  });
+
+  bot.action(/^remind_set:(.+):(1h|1d|1w)$/, async (ctx) => {
     const ref = ctx.match[1];
     const leadTime = ctx.match[2];
     const eventId = resolveEventRef(ref);
@@ -66,7 +75,7 @@ export function registerReminderHandlers(bot) {
       leadTime,
     });
 
-    const leadLabel = leadTime === "1d" ? "1 day" : "1 week";
+    const leadLabel = LEAD_LABELS[leadTime];
     await ctx.answerCbQuery("Reminder set!");
     await ctx.editMessageText(`🔔 Got it — I'll remind you ${leadLabel} before "${event.summary}".`);
   });
