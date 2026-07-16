@@ -18,5 +18,5 @@ export const config = {
   timezone: process.env.TIMEZONE || "Australia/Melbourne",
   calendarPublicUrl:
     process.env.CALENDAR_PUBLIC_URL ||
-    "https://calendar.google.com/calendar/u/0?cid=OWtxZWQ3cWMyczVrYjE5ZWtpcHRsOHZuMDhAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ",
+    "https://calendar.google.com/calendar/u/0/newembed?src=9kqed7qc2s5kb19ekiptl8vn08@group.calendar.google.com&ctz=Australia/Sydney&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&mode=MONTH",
 };

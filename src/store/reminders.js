@@ -69,6 +69,18 @@ export function markNotified(id) {
   save(reminders);
 }
 
+export function getRemindersForChat(chatId) {
+  return reminders.filter((r) => !r.notified && String(r.chatId) === String(chatId));
+}
+
+export function removeReminder(id) {
+  const before = reminders.length;
+  reminders = reminders.filter((r) => r.id !== id);
+  const removed = reminders.length !== before;
+  if (removed) save(reminders);
+  return removed;
+}
+
 // Drop reminders for events that have already happened or were notified,
 // so the file doesn't grow forever.
 export function pruneStaleReminders(now = new Date()) {

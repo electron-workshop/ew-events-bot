@@ -1,6 +1,6 @@
 import { Markup } from "telegraf";
 import { getCalendarEvent } from "../../services/calendar.js";
-import { addReminder, LEAD_LABELS } from "../../store/reminders.js";
+import { addReminder, removeReminder, LEAD_LABELS } from "../../store/reminders.js";
 import { resolveEventRef } from "../../store/eventRefs.js";
 import { log } from "../../logger.js";
 
@@ -37,13 +37,13 @@ export function registerReminderHandlers(bot) {
           Markup.button.callback("1 day before", `remind_set:${ref}:1d`),
           Markup.button.callback("1 week before", `remind_set:${ref}:1w`),
         ],
-        [Markup.button.callback("Cancel", "remind_cancel")],
+        [Markup.button.callback("No Reminder", "remind_cancel")],
       ])
     );
   });
 
   bot.action("remind_cancel", async (ctx) => {
-    await ctx.answerCbQuery("Cancelled.");
+    await ctx.answerCbQuery();
     await ctx.editMessageText("No reminder set.");
   });
 
@@ -78,5 +78,13 @@ export function registerReminderHandlers(bot) {
     const leadLabel = LEAD_LABELS[leadTime];
     await ctx.answerCbQuery("Reminder set!");
     await ctx.editMessageText(`🔔 Got it — I'll remind you ${leadLabel} before "${event.summary}".`);
+  });
+
+  bot.action(/^reminder_cancel:(.+)$/, async (ctx) => {
+    const id = ctx.match[1];
+    const removed = removeReminder(id);
+    log("reminders", `${removed ? "cancelled" : "couldn't find"} reminder ${id} for ${ctx.from.id}`);
+    await ctx.answerCbQuery(removed ? "Reminder cancelled." : "Already gone.");
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
   });
 }
