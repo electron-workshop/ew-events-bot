@@ -8,11 +8,13 @@ import { handleToday, handleTomorrow, handleWeek, handleMonth } from "./commands
 import { handleReminders } from "./commands/reminders.js";
 import { handleBlast } from "./commands/blast.js";
 import { handleRelease } from "./commands/release.js";
+import { handleFeedback } from "./commands/feedback.js";
 import { registerCallbackHandlers } from "./handlers/callbacks.js";
 import { registerReplyHandler } from "./handlers/replies.js";
 import { registerAwaitingLinkHandler } from "./handlers/awaitingLink.js";
 import { registerReminderHandlers } from "./handlers/reminders.js";
 import { registerBroadcastComposeHandler, registerBroadcastActionHandlers } from "./handlers/broadcast.js";
+import { registerFeedbackComposeHandler, registerFeedbackActionHandlers } from "./handlers/feedback.js";
 import { registerFallbackHandler } from "./handlers/fallback.js";
 
 export function createBot() {
@@ -33,10 +35,13 @@ export function createBot() {
   bot.command("reminders", handleReminders);
   bot.command("blast", handleBlast);
   bot.command("release", handleRelease);
+  bot.command("feedback", handleFeedback);
   registerCallbackHandlers(bot);
   registerReminderHandlers(bot);
   registerBroadcastActionHandlers(bot);
+  registerFeedbackActionHandlers(bot);
   registerBroadcastComposeHandler(bot);
+  registerFeedbackComposeHandler(bot);
   registerReplyHandler(bot);
   registerAwaitingLinkHandler(bot);
   registerFallbackHandler(bot); // must stay last — it answers anything left over

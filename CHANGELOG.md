@@ -8,6 +8,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `/feedback` — tell the EW team about a bug or an idea, either as `/feedback your message` or on its own and the bot waits for your next message. It's passed to the admin, who decides whether it becomes a GitHub issue.
+
 ### Fixed
 
 - Editing an event works whether you reply to the bot's message or just send the corrected details as a normal message. Before, only a proper Telegram reply worked and anything else got no response at all.
