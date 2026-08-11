@@ -1,48 +1,41 @@
 import { Markup } from "telegraf";
 import {
   findPendingByEditMessage,
+  findAwaitingEdit,
   updatePendingFields,
+  clearAwaitingEdit,
 } from "../../store/pendingEvents.js";
-import { formatFieldsSummary } from "../formatEvent.js";
-
-const FIELD_KEYS = ["title", "date", "time", "location", "description", "register_link"];
-
-function parseFieldLines(text) {
-  const updates = {};
-  for (const line of text.split("\n")) {
-    const separatorIndex = line.indexOf(":");
-    if (separatorIndex === -1) continue;
-
-    const key = line.slice(0, separatorIndex).trim().toLowerCase().replace(/\s+/g, "_");
-    const value = line.slice(separatorIndex + 1).trim();
-
-    if (FIELD_KEYS.includes(key) && value) {
-      updates[key] = value;
-    }
-  }
-  return updates;
-}
+import { formatFieldsSummary, EDIT_INSTRUCTIONS } from "../formatEvent.js";
+import { log } from "../../logger.js";
+import { parseFieldLines } from "../fields.js";
 
 export function registerReplyHandler(bot) {
   bot.on("text", async (ctx, next) => {
+    // Prefer the message they actually replied to — that's unambiguous even
+    // with several drafts open. Otherwise fall back to whichever draft they
+    // last tapped Edit on, so a plain message works too.
     const replyTo = ctx.message.reply_to_message;
-    if (!replyTo) return next();
-
-    const entry = findPendingByEditMessage(ctx.chat.id, replyTo.message_id);
+    const entry =
+      (replyTo && findPendingByEditMessage(ctx.chat.id, replyTo.message_id)) ||
+      findAwaitingEdit(ctx.chat.id, ctx.from.id);
     if (!entry) return next();
 
     const updates = parseFieldLines(ctx.message.text);
     if (Object.keys(updates).length === 0) {
-      await ctx.reply("Didn't recognise any fields in that — use the `field: value` format shown above.");
+      log("edit", `no recognisable fields from ${ctx.from.id} for pending ${entry.id}`);
+      await ctx.reply(
+        `I couldn't find any fields in that.\n\n${EDIT_INSTRUCTIONS}`
+      );
       return;
     }
 
     updatePendingFields(entry.id, updates);
+    log("edit", `pending ${entry.id} updated by ${ctx.from.id}: ${Object.keys(updates).join(", ")}`);
 
     await ctx.reply(
       `Updated:\n\n${formatFieldsSummary({ ...entry.fields, ...updates })}\n\nAdd this to the calendar?`,
       {
-        parse_mode: "Markdown",
+        parse_mode: "HTML",
         ...Markup.inlineKeyboard([
           Markup.button.callback("Confirm", `confirm:${entry.id}`),
           Markup.button.callback("Edit", `edit:${entry.id}`),
@@ -50,5 +43,9 @@ export function registerReplyHandler(bot) {
         ]),
       }
     );
+
+    // Only now — if the summary failed to send, they're still in edit mode and
+    // can just send the details again instead of hunting for the Edit button.
+    clearAwaitingEdit(entry.id);
   });
 }

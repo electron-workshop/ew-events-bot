@@ -5,9 +5,11 @@ import {
   getPending,
   deletePending,
   setEditMessageId,
+  markAwaitingEdit,
 } from "../../store/pendingEvents.js";
 import { formatFieldsSummary, EDIT_INSTRUCTIONS } from "../formatEvent.js";
 import { log } from "../../logger.js";
+import { answerCb } from "../answerCb.js";
 
 async function notifyAdminIfNeeded(ctx, entry, event) {
   if (!config.adminChatId) return;
@@ -18,7 +20,7 @@ async function notifyAdminIfNeeded(ctx, entry, event) {
     `New event added by ${entry.requesterName} from ${entry.sourceUrl}:\n\n${formatFieldsSummary(
       entry.fields
     )}\n\n${event.htmlLink}`,
-    { parse_mode: "Markdown" }
+    { parse_mode: "HTML" }
   );
 }
 
@@ -29,11 +31,11 @@ export function registerCallbackHandlers(bot) {
     log("confirm", `pending ${id} confirmed by ${ctx.from.id}`);
     if (!entry) {
       log("confirm", `pending ${id} not found (expired?)`);
-      await ctx.answerCbQuery("This request has expired.");
+      await answerCb(ctx, "This request has expired.");
       return;
     }
 
-    await ctx.answerCbQuery("Adding to the calendar...");
+    await answerCb(ctx, "Adding to the calendar...");
 
     let event;
     try {
@@ -56,7 +58,7 @@ export function registerCallbackHandlers(bot) {
   bot.action(/^cancel:(.+)$/, async (ctx) => {
     const id = ctx.match[1];
     deletePending(id);
-    await ctx.answerCbQuery("Cancelled.");
+    await answerCb(ctx, "Cancelled.");
     await ctx.editMessageReplyMarkup(undefined).catch(() => {});
     await ctx.reply("Cancelled — nothing was added to the calendar.");
   });
@@ -65,11 +67,17 @@ export function registerCallbackHandlers(bot) {
     const id = ctx.match[1];
     const entry = getPending(id);
     if (!entry) {
-      await ctx.answerCbQuery("This request has expired.");
+      log("edit", `pending ${id} not found (expired?)`);
+      await answerCb(ctx, "This request has expired.");
       return;
     }
 
-    await ctx.answerCbQuery();
+    // Mark first: if sending the instructions fails, their next message should
+    // still be treated as the edit rather than vanishing.
+    markAwaitingEdit(id);
+    log("edit", `pending ${id} awaiting edited fields from ${ctx.from.id}`);
+
+    await answerCb(ctx);
     const sentMessage = await ctx.reply(EDIT_INSTRUCTIONS);
     setEditMessageId(id, sentMessage.message_id);
   });

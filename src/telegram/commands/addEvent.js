@@ -91,7 +91,7 @@ export async function processEventUrl(ctx, url) {
     undefined,
     `Here's what I found:\n\n${formatFieldsSummary(extraction.fields)}\n\nAdd this to the calendar?`,
     {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       ...Markup.inlineKeyboard([
         Markup.button.callback("Confirm", `confirm:${pendingId}`),
         Markup.button.callback("Edit", `edit:${pendingId}`),
