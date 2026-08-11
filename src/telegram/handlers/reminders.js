@@ -3,6 +3,7 @@ import { getCalendarEvent } from "../../services/calendar.js";
 import { addReminder, removeReminder, LEAD_LABELS } from "../../store/reminders.js";
 import { resolveEventRef } from "../../store/eventRefs.js";
 import { log } from "../../logger.js";
+import { answerCb } from "../answerCb.js";
 
 function eventStartIso(event) {
   return event.start.dateTime || `${event.start.date}T09:00:00`;
@@ -15,7 +16,7 @@ export function registerReminderHandlers(bot) {
     log("reminders", `remind button tapped for ref ${ref} by ${ctx.from.id}`);
 
     if (!eventId) {
-      await ctx.answerCbQuery("This has expired — run /today, /week, or /month again.");
+      await answerCb(ctx, "This has expired — run /today, /week, or /month again.");
       return;
     }
 
@@ -24,11 +25,11 @@ export function registerReminderHandlers(bot) {
       event = await getCalendarEvent(eventId);
     } catch (error) {
       log("reminders", `couldn't fetch event ${eventId}: ${error.message}`);
-      await ctx.answerCbQuery("Couldn't find that event — it may have been removed.");
+      await answerCb(ctx, "Couldn't find that event — it may have been removed.");
       return;
     }
 
-    await ctx.answerCbQuery();
+    await answerCb(ctx);
     await ctx.reply(
       `When would you like to be reminded about "${event.summary}"?`,
       Markup.inlineKeyboard([
@@ -43,7 +44,7 @@ export function registerReminderHandlers(bot) {
   });
 
   bot.action("remind_cancel", async (ctx) => {
-    await ctx.answerCbQuery();
+    await answerCb(ctx);
     await ctx.editMessageText("No reminder set.");
   });
 
@@ -53,7 +54,7 @@ export function registerReminderHandlers(bot) {
     const eventId = resolveEventRef(ref);
 
     if (!eventId) {
-      await ctx.answerCbQuery("This has expired — run /today, /week, or /month again.");
+      await answerCb(ctx, "This has expired — run /today, /week, or /month again.");
       return;
     }
 
@@ -62,7 +63,7 @@ export function registerReminderHandlers(bot) {
       event = await getCalendarEvent(eventId);
     } catch (error) {
       log("reminders", `couldn't fetch event ${eventId}: ${error.message}`);
-      await ctx.answerCbQuery("Couldn't find that event — it may have been removed.");
+      await answerCb(ctx, "Couldn't find that event — it may have been removed.");
       return;
     }
 
@@ -76,7 +77,7 @@ export function registerReminderHandlers(bot) {
     });
 
     const leadLabel = LEAD_LABELS[leadTime];
-    await ctx.answerCbQuery("Reminder set!");
+    await answerCb(ctx, "Reminder set!");
     await ctx.editMessageText(`🔔 Got it — I'll remind you ${leadLabel} before "${event.summary}".`);
   });
 
@@ -84,7 +85,7 @@ export function registerReminderHandlers(bot) {
     const id = ctx.match[1];
     const removed = removeReminder(id);
     log("reminders", `${removed ? "cancelled" : "couldn't find"} reminder ${id} for ${ctx.from.id}`);
-    await ctx.answerCbQuery(removed ? "Reminder cancelled." : "Already gone.");
+    await answerCb(ctx, removed ? "Reminder cancelled." : "Already gone.");
     await ctx.editMessageReplyMarkup(undefined).catch(() => {});
   });
 }

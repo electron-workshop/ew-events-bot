@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Editing an event works whether you reply to the bot's message or just send the corrected details as a normal message. Before, only a proper Telegram reply worked and anything else got no response at all.
+- The bot always answers a direct message now, instead of silently ignoring anything it didn't understand.
+- A dropped connection while tapping Confirm, Edit or Cancel no longer makes the button do nothing.
+
+### Changed
+
+- Events waiting for confirmation now stay open for 2 hours instead of 30 minutes.
+
 ## [0.1.0] - 2026-07-15
 
 ### Added

@@ -13,6 +13,7 @@ import { registerReplyHandler } from "./handlers/replies.js";
 import { registerAwaitingLinkHandler } from "./handlers/awaitingLink.js";
 import { registerReminderHandlers } from "./handlers/reminders.js";
 import { registerBroadcastComposeHandler, registerBroadcastActionHandlers } from "./handlers/broadcast.js";
+import { registerFallbackHandler } from "./handlers/fallback.js";
 
 export function createBot() {
   const bot = new Telegraf(config.telegramBotToken);
@@ -38,6 +39,7 @@ export function createBot() {
   registerBroadcastComposeHandler(bot);
   registerReplyHandler(bot);
   registerAwaitingLinkHandler(bot);
+  registerFallbackHandler(bot); // must stay last — it answers anything left over
 
   bot.catch((error, ctx) => {
     console.error("Unhandled bot error:", error);

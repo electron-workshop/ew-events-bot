@@ -5,6 +5,7 @@ import { setPendingBroadcast, getPendingBroadcast, clearPendingBroadcast } from 
 import { getPrivateChatIds } from "../../store/knownChats.js";
 import { config } from "../../config.js";
 import { log } from "../../logger.js";
+import { answerCb } from "../answerCb.js";
 
 // Captures the admin's next message after /blast as the broadcast draft.
 export function registerBroadcastComposeHandler(bot) {
@@ -29,17 +30,17 @@ export function registerBroadcastComposeHandler(bot) {
 export function registerBroadcastActionHandlers(bot) {
   bot.action(/^blast_confirm:(.+)$/, async (ctx) => {
     if (!isAdmin(ctx)) {
-      await ctx.answerCbQuery();
+      await answerCb(ctx);
       return;
     }
 
     const pending = getPendingBroadcast(ctx.match[1]);
     if (!pending) {
-      await ctx.answerCbQuery("This draft has expired.");
+      await answerCb(ctx, "This draft has expired.");
       return;
     }
 
-    await ctx.answerCbQuery("Sending...");
+    await answerCb(ctx, "Sending...");
     clearPendingBroadcast();
 
     const chatIds = getPrivateChatIds().filter((id) => String(id) !== String(config.adminChatId));
@@ -63,7 +64,7 @@ export function registerBroadcastActionHandlers(bot) {
 
   bot.action(/^blast_cancel:(.+)$/, async (ctx) => {
     clearPendingBroadcast();
-    await ctx.answerCbQuery("Cancelled.");
+    await answerCb(ctx, "Cancelled.");
     await ctx.editMessageText("Broadcast cancelled — nothing was sent.");
   });
 }

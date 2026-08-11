@@ -19,7 +19,7 @@ export function formatFieldsSummary(fields) {
 }
 
 export const EDIT_INSTRUCTIONS =
-  'Reply to this message with corrected details, one per line, e.g.:\n' +
+  'Send me the corrected details, one per line, e.g.:\n' +
   'title: New title\n' +
   'date: 2026-08-01\n' +
   'time: 18:30\n' +
