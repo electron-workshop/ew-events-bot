@@ -7,6 +7,7 @@ import { handleView } from "./commands/view.js";
 import { handleToday, handleTomorrow, handleWeek, handleMonth } from "./commands/listEvents.js";
 import { handleReminders } from "./commands/reminders.js";
 import { handleBlast } from "./commands/blast.js";
+import { handleRelease } from "./commands/release.js";
 import { registerCallbackHandlers } from "./handlers/callbacks.js";
 import { registerReplyHandler } from "./handlers/replies.js";
 import { registerAwaitingLinkHandler } from "./handlers/awaitingLink.js";
@@ -30,6 +31,7 @@ export function createBot() {
   bot.command("month", handleMonth);
   bot.command("reminders", handleReminders);
   bot.command("blast", handleBlast);
+  bot.command("release", handleRelease);
   registerCallbackHandlers(bot);
   registerReminderHandlers(bot);
   registerBroadcastActionHandlers(bot);
