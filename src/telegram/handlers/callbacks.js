@@ -20,7 +20,7 @@ async function notifyAdminIfNeeded(ctx, entry, event) {
     `New event added by ${entry.requesterName} from ${entry.sourceUrl}:\n\n${formatFieldsSummary(
       entry.fields
     )}\n\n${event.htmlLink}`,
-    { parse_mode: "Markdown" }
+    { parse_mode: "HTML" }
   );
 }
 

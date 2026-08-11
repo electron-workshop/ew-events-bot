@@ -30,13 +30,12 @@ export function registerReplyHandler(bot) {
     }
 
     updatePendingFields(entry.id, updates);
-    clearAwaitingEdit(entry.id);
     log("edit", `pending ${entry.id} updated by ${ctx.from.id}: ${Object.keys(updates).join(", ")}`);
 
     await ctx.reply(
       `Updated:\n\n${formatFieldsSummary({ ...entry.fields, ...updates })}\n\nAdd this to the calendar?`,
       {
-        parse_mode: "Markdown",
+        parse_mode: "HTML",
         ...Markup.inlineKeyboard([
           Markup.button.callback("Confirm", `confirm:${entry.id}`),
           Markup.button.callback("Edit", `edit:${entry.id}`),
@@ -44,5 +43,9 @@ export function registerReplyHandler(bot) {
         ]),
       }
     );
+
+    // Only now — if the summary failed to send, they're still in edit mode and
+    // can just send the details again instead of hunting for the Edit button.
+    clearAwaitingEdit(entry.id);
   });
 }
