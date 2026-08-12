@@ -1,7 +1,7 @@
 import { google } from "googleapis";
 import { config } from "../config.js";
 import { log } from "../logger.js";
-import { computeEndTime } from "./eventTime.js";
+import { resolveEndTime, endsNextDay, addDays, dayCount, isDateKey } from "./eventTime.js";
 
 let calendarClient = null;
 
@@ -18,7 +18,7 @@ async function getCalendarClient() {
 }
 
 function buildEventResource(fields, sourceUrl) {
-  const { title, description, date, time, location, register_link } = fields;
+  const { title, description, date, end_date, time, end_time, location, register_link } = fields;
 
   const descriptionParts = [];
   if (description) descriptionParts.push(description);
@@ -31,15 +31,33 @@ function buildEventResource(fields, sourceUrl) {
     location: location || undefined,
   };
 
+  const days = end_date ? dayCount(date, end_date) : 1;
+
   if (time) {
     resource.start = { dateTime: `${date}T${time}:00`, timeZone: config.timezone };
-    // Default to a 2-hour event when no end time is known.
-    const endTime = computeEndTime(time);
-    resource.end = { dateTime: `${date}T${endTime}:00`, timeZone: config.timezone };
+
+    // The page's own end time where there is one, otherwise 2 hours.
+    const endTime = resolveEndTime(time, end_time);
+    // Something running 20:00–01:00 finishes on the following day.
+    const lastDay = endsNextDay(time, endTime) && isDateKey(date) ? addDays(date, 1) : date;
+    resource.end = { dateTime: `${lastDay}T${endTime}:00`, timeZone: config.timezone };
+
+    // A conference that runs 9–5 on two days is two 9–5 sittings, not one block
+    // running through the night between them. Recurring instead of spanning also
+    // means each day is listed and can be reminded on separately, because
+    // listUpcomingEvents expands recurrences via singleEvents.
+    if (days > 1) {
+      resource.recurrence = [`RRULE:FREQ=DAILY;COUNT=${days}`];
+    }
   } else {
-    // All-day event when no time was found.
+    // All-day event when no time was found. Google treats end.date as
+    // exclusive, so it's the day *after* the last day the event runs — even
+    // for a single-day event, where start and end would otherwise be equal
+    // and describe a zero-length event.
     resource.start = { date };
-    resource.end = { date };
+    // If the date isn't a real YYYY-MM-DD we can't do the arithmetic, so pass
+    // it through and let the API report it rather than throwing here.
+    resource.end = { date: isDateKey(date) ? addDays(date, days) : date };
   }
 
   return resource;

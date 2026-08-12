@@ -8,8 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Multi-day events. A conference running 9–5 across two days now goes in as 9–5 on each day, so it shows up under both days in `/today` and `/week` and you can set a reminder for either one. Previously only the first day was added.
+- Events now use the finish time from the page instead of always assuming they run for two hours. Where the page doesn't say, the preview marks the end time as estimated so you can correct it.
+- Events running past midnight, like a launch night from 8pm to 1am, now end on the following morning rather than the same evening.
+- `end_date` and `end_time` are fields you can set when editing, for when the bot misses that an event runs across several days or gets the finish time wrong.
+
 ### Fixed
 
+- All-day events are no longer written with the same start and end date, which Google Calendar treats as an event of no length.
 - Editing an event works whether you reply to the bot's message or just send the corrected details as a normal message. Before, only a proper Telegram reply worked and anything else got no response at all.
 - The bot always answers a direct message now, instead of silently ignoring anything it didn't understand.
 - A dropped connection while tapping Confirm, Edit or Cancel no longer makes the button do nothing.
@@ -18,6 +26,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- When editing, a date or time the bot can't read (like `time: 5pm`) is now called out, saying what format it needs. It used to be accepted and then quietly ignored.
 - Events waiting for confirmation now stay open for 2 hours instead of 30 minutes.
 
 ## [0.1.0] - 2026-07-15
