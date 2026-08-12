@@ -10,7 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- `/feedback` — tell the EW team about a bug or an idea, either as `/feedback your message` or on its own and the bot waits for your next message. It's passed to the admin, who decides whether it becomes a GitHub issue.
+- `/feedback` — tell the EW team about a bug or an idea, either as `/feedback your message` or on its own and the bot waits for your next message. It's passed to the admin, who decides whether it becomes a GitHub issue. The issue doesn't include your name or Telegram ID.
 
 ### Fixed
 

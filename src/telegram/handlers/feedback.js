@@ -24,13 +24,18 @@ function issueTitle(text) {
   return trimmed.length > TITLE_MAX ? `${trimmed.slice(0, TITLE_MAX - 1)}…` : trimmed;
 }
 
+// Deliberately identity-free: issues may end up public, and a Telegram username
+// (let alone the numeric ID, which a person can't change) would be permanent and
+// searchable. Only the date is included — a precise timestamp plus a small group
+// of users is enough to work out who sent what. The reference maps back to
+// src/data/feedback.json on the server, which is where the sender is recorded.
 function issueBody(entry) {
-  const submitted = new Date(entry.createdAt).toISOString();
+  const submittedOn = new Date(entry.createdAt).toISOString().slice(0, 10);
   return [
     entry.text,
     "",
     "---",
-    `Sent via the Telegram bot by ${entry.from.label} (Telegram ID \`${entry.from.id}\`) on ${submitted}.`,
+    `Sent via the Telegram bot on ${submittedOn}. Reference \`${entry.id}\` (sender recorded privately).`,
   ].join("\n");
 }
 
