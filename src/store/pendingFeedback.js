@@ -71,6 +71,15 @@ export function attributeFeedback(id, { anonymous }) {
   return entry;
 }
 
+/** The issue text the admin has written but not yet confirmed. */
+export function setDraftIssue(id, draft) {
+  const entry = getFeedback(id);
+  if (!entry) return null;
+  entry.draftIssue = draft; // { title, body }
+  save(feedback);
+  return entry;
+}
+
 export function cancelFeedback(id) {
   const entry = getFeedback(id);
   if (!entry) return null;

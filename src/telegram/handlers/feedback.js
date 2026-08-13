@@ -18,6 +18,7 @@ import {
   resolveFeedback,
   attributeFeedback,
   cancelFeedback,
+  setDraftIssue,
   isRateLimited,
   RATE_LIMIT,
 } from "../../store/pendingFeedback.js";
@@ -53,6 +54,36 @@ function adminKeyboard(id) {
     ],
     [Markup.button.callback("Dismiss", `feedback_dismiss:${id}`)],
   ]);
+}
+
+// Asks the admin to type the issue. The buttons here are the way out, so the
+// admin never has to remember a command to escape compose mode.
+async function promptForIssueText(ctx, entry) {
+  setAwaitingIssue(ctx.chat.id, ctx.from.id, entry.id);
+  log("feedback", `${entry.id} being written by admin`);
+
+  await ctx.reply(
+    "Send the issue as you want it — first line is the title, everything after is the body.\n\n" +
+      "Filing it unchanged would give:\n\n" +
+      `Title: ${issueTitle(entry.text)}\n\n${entry.text}`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback("File unchanged instead", `feedback_file:${entry.id}`)],
+      [Markup.button.callback("Dismiss", `feedback_dismiss:${entry.id}`)],
+    ])
+  );
+}
+
+// Shows exactly what will be created, because filing is irreversible from
+// here — the bot has no way to delete an issue afterwards.
+async function previewIssue(ctx, entry, { title, body }) {
+  await ctx.reply(
+    `Here's the issue I'll create:\n\n${title}\n\n${issueBody(entry, body)}`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback("Create issue", `issue_confirm:${entry.id}`)],
+      [Markup.button.callback("Rewrite", `issue_rewrite:${entry.id}`)],
+      [Markup.button.callback("Dismiss", `feedback_dismiss:${entry.id}`)],
+    ])
+  );
 }
 
 // Shared by the file-as-is and write-your-own paths. Leaves the feedback
@@ -169,15 +200,17 @@ export function registerIssueComposeHandler(bot) {
     const title = lines[0].trim();
     const body = lines.slice(1).join("\n").trim();
     if (!title) {
-      await ctx.reply("The first line needs to be the issue title. Try again, or send /cancel.");
+      await ctx.reply("The first line needs to be the issue title. Try again.");
       return;
     }
 
-    // Clear first: if GitHub fails, the admin shouldn't be stuck in compose
-    // mode — the original buttons are still there to retry with.
+    // Held, not filed — the admin confirms from the preview. Compose mode ends
+    // here so their next message isn't swallowed as another attempt.
     clearAwaitingIssue(ctx.chat.id, ctx.from.id);
-    log("feedback", `${entry.id} filing with an admin-written issue`);
-    await fileIssue(ctx, entry, { title, body: issueBody(entry, body || entry.text) });
+    const draft = { title, body: body || entry.text };
+    setDraftIssue(entry.id, draft);
+    log("feedback", `${entry.id} has an admin-written issue awaiting confirmation`);
+    await previewIssue(ctx, entry, draft);
   });
 }
 
@@ -260,24 +293,33 @@ export function registerFeedbackChoiceHandlers(bot) {
 }
 
 export function registerFeedbackActionHandlers(bot) {
-  bot.action(/^feedback_file:(.+)$/, async (ctx) => {
+  async function pendingForAdmin(ctx, id) {
     if (!isAdmin(ctx)) {
       await answerCb(ctx);
-      return;
+      return null;
     }
 
-    const entry = getFeedback(ctx.match[1]);
+    const entry = getFeedback(id);
     if (!entry) {
       await answerCb(ctx, "That feedback is no longer available.");
-      return;
+      return null;
     }
     if (entry.status !== "pending") {
       await answerCb(ctx, `Already ${entry.status}.`);
-      return;
+      return null;
     }
+    return entry;
+  }
+
+  bot.action(/^feedback_file:(.+)$/, async (ctx) => {
+    const entry = await pendingForAdmin(ctx, ctx.match[1]);
+    if (!entry) return;
 
     await answerCb(ctx, "Creating the issue...");
     await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    // Reachable from the compose prompt, so make sure the admin isn't left
+    // waiting to type an issue that's already been filed.
+    clearAwaitingIssue(ctx.chat.id, ctx.from.id);
     await fileIssue(ctx, entry, {
       title: issueTitle(entry.text),
       body: issueBody(entry),
@@ -288,31 +330,41 @@ export function registerFeedbackActionHandlers(bot) {
   // feedback is rambling, or when the first line — which would otherwise
   // become the title — has the sender's name in it.
   bot.action(/^feedback_write:(.+)$/, async (ctx) => {
-    if (!isAdmin(ctx)) {
-      await answerCb(ctx);
-      return;
-    }
-
-    const entry = getFeedback(ctx.match[1]);
-    if (!entry) {
-      await answerCb(ctx, "That feedback is no longer available.");
-      return;
-    }
-    if (entry.status !== "pending") {
-      await answerCb(ctx, `Already ${entry.status}.`);
-      return;
-    }
-
-    setAwaitingIssue(ctx.chat.id, ctx.from.id, entry.id);
-    log("feedback", `${entry.id} being rewritten by admin`);
+    const entry = await pendingForAdmin(ctx, ctx.match[1]);
+    if (!entry) return;
 
     await answerCb(ctx);
-    await ctx.reply(
-      "Send the issue as you want it — first line is the title, everything after is the body.\n\n" +
-        "For reference, filing it as-is would give:\n\n" +
-        `Title: ${issueTitle(entry.text)}\n\n${entry.text}\n\n` +
-        "Send /cancel to leave it pending instead."
-    );
+    // Take the buttons off the message being answered, so there's only ever
+    // one live set of buttons for this piece of feedback.
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    await promptForIssueText(ctx, entry);
+  });
+
+  bot.action(/^issue_rewrite:(.+)$/, async (ctx) => {
+    const entry = await pendingForAdmin(ctx, ctx.match[1]);
+    if (!entry) return;
+
+    await answerCb(ctx);
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    await promptForIssueText(ctx, entry);
+  });
+
+  bot.action(/^issue_confirm:(.+)$/, async (ctx) => {
+    const entry = await pendingForAdmin(ctx, ctx.match[1]);
+    if (!entry) return;
+
+    if (!entry.draftIssue) {
+      await answerCb(ctx, "Nothing written yet.");
+      return;
+    }
+
+    await answerCb(ctx, "Creating the issue...");
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    clearAwaitingIssue(ctx.chat.id, ctx.from.id);
+    await fileIssue(ctx, entry, {
+      title: entry.draftIssue.title,
+      body: issueBody(entry, entry.draftIssue.body),
+    });
   });
 
   bot.action(/^feedback_dismiss:(.+)$/, async (ctx) => {
@@ -325,6 +377,7 @@ export function registerFeedbackActionHandlers(bot) {
     if (entry) resolveFeedback(entry.id, { status: "dismissed" });
     log("feedback", `${ctx.match[1]} dismissed by ${ctx.from.id}`);
 
+    clearAwaitingIssue(ctx.chat.id, ctx.from.id);
     await answerCb(ctx, "Dismissed.");
     await ctx.editMessageReplyMarkup(undefined).catch(() => {});
   });
