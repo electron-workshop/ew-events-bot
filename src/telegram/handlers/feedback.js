@@ -137,10 +137,11 @@ function askToConfirm(entry, anonymous) {
   const who = anonymous ? "anonymously" : `as ${entry.from.label}`;
   return {
     text: `Send this to the EW team ${who}?\n\n${entry.text}`,
+    // No Cancel here — Back returns to the previous step, which is where
+    // abandoning it belongs. Two ways out of one screen just invites mistaps.
     keyboard: Markup.inlineKeyboard([
       [Markup.button.callback(`Yes, send ${who}`, `fb_send:${entry.id}:${anonymous ? "anon" : "named"}`)],
       [Markup.button.callback("Back", `fb_back:${entry.id}`)],
-      [Markup.button.callback("Cancel", `fb_cancel:${entry.id}`)],
     ]),
   };
 }
