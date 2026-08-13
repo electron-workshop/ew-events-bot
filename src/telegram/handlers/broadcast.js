@@ -33,6 +33,13 @@ export function registerBroadcastActionHandlers(bot) {
       return;
     }
 
+    // Belt and braces: the button isn't rendered for a draft, but a replayed
+    // callback shouldn't be able to announce a version nobody is running.
+    if (pending.draft) {
+      await answerCb(ctx, "These are draft notes — testers only.");
+      return;
+    }
+
     await answerCb(ctx, "Sending...");
     clearPendingBroadcast();
 

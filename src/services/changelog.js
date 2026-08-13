@@ -68,3 +68,11 @@ export function parseChangelog(source = readFileSync(changelogPath, "utf8")) {
 export function getChangelogEntry(version) {
   return parseChangelog().find((entry) => entry.version === version) || null;
 }
+
+// The notes for the next release, still being written. Used by /release draft
+// so testers can read the announcement before the version is cut.
+export function getUnreleasedEntry() {
+  return (
+    parseChangelog().find((entry) => entry.version.toLowerCase() === "unreleased") || null
+  );
+}

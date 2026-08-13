@@ -141,19 +141,25 @@ export function describeAudience() {
 }
 
 /** The preview + buttons shared by /blast and /release. */
-export function broadcastPreview(text, pendingId) {
-  const rows = [
-    [Markup.button.callback("Send to everyone", `blast_confirm:${pendingId}`)],
-    [Markup.button.callback("Send to me only", `blast_test:${pendingId}`)],
-  ];
-  // Only worth offering when there's someone to send to.
-  if (config.betaTesters.length > 0) {
-    rows.splice(1, 0, [Markup.button.callback("Send to beta testers", `blast_testers:${pendingId}`)]);
+export function broadcastPreview(text, pendingId, { draft = false } = {}) {
+  const rows = [];
+  // Draft notes describe a version nobody is running yet, so there's simply no
+  // button that sends them to the community.
+  if (!draft) {
+    rows.push([Markup.button.callback("Send to everyone", `blast_confirm:${pendingId}`)]);
   }
+  if (config.betaTesters.length > 0) {
+    rows.push([Markup.button.callback("Send to beta testers", `blast_testers:${pendingId}`)]);
+  }
+  rows.push([Markup.button.callback("Send to me only", `blast_test:${pendingId}`)]);
   rows.push([Markup.button.callback("Cancel", `blast_cancel:${pendingId}`)]);
 
+  const heading = draft
+    ? "Preview (draft notes — this version isn't cut yet, so it can only go to you or the testers):"
+    : "Preview:";
+
   return {
-    text: `Preview:\n\n${text}\n\n${describeAudience()}`,
+    text: `${heading}\n\n${text}\n\n${describeAudience()}`,
     keyboard: Markup.inlineKeyboard(rows),
   };
 }

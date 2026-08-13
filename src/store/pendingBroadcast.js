@@ -1,9 +1,11 @@
 import crypto from "node:crypto";
 
-let pending = null; // { id, text }
+let pending = null; // { id, text, draft }
 
-export function setPendingBroadcast(text) {
-  pending = { id: crypto.randomUUID().slice(0, 8), text };
+// `draft` marks notes for a version that hasn't been cut yet. Those can go to
+// the admin or the beta testers, but never to everyone.
+export function setPendingBroadcast(text, { draft = false } = {}) {
+  pending = { id: crypto.randomUUID().slice(0, 8), text, draft };
   return pending;
 }
 
