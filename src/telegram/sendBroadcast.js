@@ -11,7 +11,7 @@ import { log } from "../logger.js";
 
 // Goes on every broadcast, so someone who ignored the buttons long ago still
 // has a visible way out without having to remember a command exists.
-const FOOTER = "\n\n—\nDon't want these? Send /settings";
+const FOOTER = "\n\n—\nChange your broadcast preferences: /settings";
 
 const PROMPT_KEYBOARD = Markup.inlineKeyboard([
   [

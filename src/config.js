@@ -26,6 +26,9 @@ export const config = {
   // than the bot refusing to start.
   githubToken: process.env.GITHUB_TOKEN || null,
   githubRepo: process.env.GITHUB_REPO || "electron-workshop/ew-events-bot",
+  // Linked at the bottom of a release announcement. Leave unset while the repo
+  // is private — the link would 404 for everyone who isn't a collaborator.
+  changelogUrl: process.env.CHANGELOG_URL || null,
   timezone: process.env.TIMEZONE || "Australia/Melbourne",
   calendarPublicUrl:
     process.env.CALENDAR_PUBLIC_URL ||

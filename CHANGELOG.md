@@ -1,12 +1,21 @@
 # Changelog
 
-Notes for each released version of the bot. The `/release` admin command reads
-the top released section from this file and broadcasts it, so write these
-entries for the people using the bot, not for the person who wrote the code.
+Notes for each released version of the bot.
+
+`/release` broadcasts the `### Highlights` section only — three or four short
+lines, written for the people using the bot. Everything else in a version's
+section is the full record, and the broadcast links here for it. Without a
+Highlights section the whole entry gets sent, which is usually too long.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
+
+### Highlights
+
+- Multi-day events now go in for every day they run, not just the first.
+- `/feedback` — tell the EW team about a bug or an idea, anonymously if you'd rather.
+- `/settings` — choose whether you get these update messages.
 
 ### Added
 
