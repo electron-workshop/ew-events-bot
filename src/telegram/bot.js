@@ -1,6 +1,7 @@
 import { Telegraf } from "telegraf";
 import { config } from "../config.js";
 import { recordChat } from "../store/knownChats.js";
+import { log } from "../logger.js";
 import { handleAddEvent } from "./commands/addEvent.js";
 import { handleStart } from "./commands/start.js";
 import { handleView } from "./commands/view.js";
@@ -27,7 +28,16 @@ export function createBot() {
   const bot = new Telegraf(config.telegramBotToken);
 
   bot.use((ctx, next) => {
-    if (ctx.chat) recordChat(ctx.chat.id, ctx.chat.type);
+    if (ctx.chat) {
+      const isNew = recordChat(ctx.chat.id, ctx.chat.type);
+      // Logged once per chat, not per message. This is where you get someone's
+      // numeric ID to put in BETA_TESTERS — ask them to message the bot, then
+      // look for this line.
+      if (isNew && ctx.from) {
+        const label = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name;
+        log("new_chat", `${label} (id ${ctx.from.id}) in ${ctx.chat.type} chat ${ctx.chat.id}`);
+      }
+    }
     return next();
   });
 

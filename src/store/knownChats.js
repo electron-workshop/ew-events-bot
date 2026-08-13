@@ -24,13 +24,15 @@ let chats = load(); // { [chatId]: { type, announcements, promptedAt } }
 
 // Called on every incoming update so /blast knows who to reach. Only writes
 // to disk the first time a chat is seen — no need to persist on every message.
+/** Returns true the first time a chat is seen, so callers can log it once. */
 export function recordChat(chatId, type) {
   const key = String(chatId);
-  if (chats[key]) return;
+  if (chats[key]) return false;
   // Announcements start on. Starting them off would mean the first broadcast
   // reached nobody, and there'd be no way to tell people they could opt in.
   chats[key] = { type, announcements: true, promptedAt: null };
   save(chats);
+  return true;
 }
 
 export function getPrivateChatIds() {
