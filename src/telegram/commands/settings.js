@@ -14,8 +14,8 @@ export function settingsMessage(chatId) {
     keyboard: Markup.inlineKeyboard([
       [
         on
-          ? Markup.button.callback("Turn these off", "sub_stop")
-          : Markup.button.callback("Turn these on", "sub_keep"),
+          ? Markup.button.callback("Turn these off", "sub_stop:menu")
+          : Markup.button.callback("Turn these on", "sub_keep:menu"),
       ],
     ]),
   };
@@ -27,24 +27,36 @@ export async function handleSettings(ctx) {
 }
 
 export function registerSubscriptionHandlers(bot) {
-  // Reachable from two places: the buttons on someone's first broadcast, and
-  // /settings. Both end up showing the same current state.
-  async function setAndConfirm(ctx, subscribed) {
+  // The same two buttons appear in two places, and they have to behave
+  // differently. On a broadcast the message is something the person was
+  // reading, so only the buttons come off. In /settings the message *is* the
+  // panel, so it's rewritten to show the new state.
+  // The bare form (no ":origin") is what older broadcasts already sitting in
+  // people's chats send, so it's treated as a broadcast.
+  bot.action(/^sub_(keep|stop)(?::(bc|menu))?$/, async (ctx) => {
+    const subscribed = ctx.match[1] === "keep";
+    const fromMenu = ctx.match[2] === "menu";
+
     setSubscribed(ctx.chat.id, subscribed);
-    log("settings", `${ctx.chat.id} announcements ${subscribed ? "on" : "off"}`);
+    log("settings", `${ctx.chat.id} announcements ${subscribed ? "on" : "off"} (via ${fromMenu ? "/settings" : "broadcast"})`);
 
     await answerCb(ctx, subscribed ? "You'll keep getting these." : "Turned off.");
 
-    const confirmation = subscribed
-      ? "Announcements are on. Send /settings to change it."
-      : "Announcements are off. Send /settings to turn them back on.";
+    if (fromMenu) {
+      const { text, keyboard } = settingsMessage(ctx.chat.id);
+      await ctx.editMessageText(text, keyboard).catch(async () => {
+        await ctx.reply(text, keyboard);
+      });
+      return;
+    }
 
-    // Replaces the buttons rather than leaving them sitting in the chat.
-    await ctx.editMessageText(confirmation).catch(async () => {
-      await ctx.reply(confirmation);
-    });
-  }
-
-  bot.action("sub_keep", (ctx) => setAndConfirm(ctx, true));
-  bot.action("sub_stop", (ctx) => setAndConfirm(ctx, false));
+    // Leave the announcement itself intact — replacing it would delete the
+    // thing they'd just tapped a button underneath.
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    await ctx.reply(
+      subscribed
+        ? "Got it — you'll keep getting these. Send /settings to change it."
+        : "Done, no more update messages. Send /settings to turn them back on."
+    );
+  });
 }

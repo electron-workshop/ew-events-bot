@@ -22,10 +22,12 @@ function sendOptions({ html, keyboard }) {
   };
 }
 
+// ":bc" marks these as coming from a broadcast, so tapping one strips the
+// buttons rather than replacing the announcement people are reading.
 const PROMPT_KEYBOARD = Markup.inlineKeyboard([
   [
-    Markup.button.callback("Keep sending these", "sub_keep"),
-    Markup.button.callback("Turn these off", "sub_stop"),
+    Markup.button.callback("Keep sending these", "sub_keep:bc"),
+    Markup.button.callback("Turn these off", "sub_stop:bc"),
   ],
 ]);
 
