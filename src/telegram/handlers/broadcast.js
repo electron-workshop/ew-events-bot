@@ -43,7 +43,9 @@ export function registerBroadcastActionHandlers(bot) {
     await answerCb(ctx, "Sending...");
     clearPendingBroadcast();
 
-    const { sent, failed } = await sendBroadcast(ctx.telegram, pending.text);
+    const { sent, failed } = await sendBroadcast(ctx.telegram, pending.text, {
+      html: pending.html,
+    });
     await ctx.editMessageText(
       `📣 Broadcast sent to ${sent} chat(s)${failed ? ` (${failed} failed)` : ""}.`
     );
@@ -67,6 +69,7 @@ export function registerBroadcastActionHandlers(bot) {
     await answerCb(ctx, "Sending to you only...");
     const { sent, failed } = await sendBroadcast(ctx.telegram, pending.text, {
       onlyChatId: ctx.chat.id,
+      html: pending.html,
     });
     log("blast", `test send to admin: ${sent} sent, ${failed} failed`);
 
@@ -104,7 +107,10 @@ export function registerBroadcastActionHandlers(bot) {
     }
 
     await answerCb(ctx, "Sending to beta testers...");
-    const { sent, failed } = await sendBroadcast(ctx.telegram, pending.text, { testersOnly: true });
+    const { sent, failed } = await sendBroadcast(ctx.telegram, pending.text, {
+      testersOnly: true,
+      html: pending.html,
+    });
     log("blast", `tester send: ${sent} sent, ${failed} failed`);
 
     await ctx.reply(

@@ -13,9 +13,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Highlights
 
-- Multi-day events now go in for every day they run, not just the first.
-- `/feedback` — tell the EW team about a bug or an idea, anonymously if you'd rather.
-- `/settings` — choose whether you get these update messages.
+- Multi-day event support added
+- `/feedback` - tell the EWorkshop team about a bug or an idea
+- `/settings` - choose whether you get these update messages
 
 ### Added
 

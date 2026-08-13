@@ -39,9 +39,9 @@ export async function handleRelease(ctx) {
   }
 
   const text = formatReleaseNotes(entry);
-  const pending = setPendingBroadcast(text, { draft: wantsDraft });
+  const pending = setPendingBroadcast(text, { draft: wantsDraft, html: true });
   log("release", `${wantsDraft ? "draft" : `v${version}`} notes drafted by ${ctx.from.id}`);
 
-  const preview = broadcastPreview(text, pending.id, { draft: wantsDraft });
+  const preview = broadcastPreview(text, pending.id, { draft: wantsDraft, html: true });
   await ctx.reply(preview.text, preview.keyboard);
 }

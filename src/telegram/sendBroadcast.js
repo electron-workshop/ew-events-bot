@@ -11,7 +11,16 @@ import { log } from "../logger.js";
 
 // Goes on every broadcast, so someone who ignored the buttons long ago still
 // has a visible way out without having to remember a command exists.
-const FOOTER = "\n\n—\nChange your broadcast preferences: /settings";
+const FOOTER = "\n\n—\nChange your broadcast /settings";
+
+// Release notes are composed by the bot and carry a link; a /blast is whatever
+// the admin typed, so it stays plain text and keeps its own link previews.
+function sendOptions({ html, keyboard }) {
+  return {
+    ...(html ? { parse_mode: "HTML", link_preview_options: { is_disabled: true } } : {}),
+    ...(keyboard || {}),
+  };
+}
 
 const PROMPT_KEYBOARD = Markup.inlineKeyboard([
   [
@@ -57,7 +66,11 @@ function planRecipients({ onlyChatId, testersOnly }) {
   return { mode: testersOnly ? "beta testers" : "everyone", recipients, skipped };
 }
 
-export async function sendBroadcast(telegram, text, { onlyChatId = null, testersOnly = false } = {}) {
+export async function sendBroadcast(
+  telegram,
+  text,
+  { onlyChatId = null, testersOnly = false, html = false } = {}
+) {
   const isTest = onlyChatId !== null;
   const { mode, recipients, skipped } = planRecipients({ onlyChatId, testersOnly });
 
@@ -75,7 +88,11 @@ export async function sendBroadcast(telegram, text, { onlyChatId = null, testers
     const withPrompt = isTest || needsBroadcastPrompt(chatId);
     const tag = isTester(chatId) ? " [tester]" : "";
     try {
-      await telegram.sendMessage(chatId, text + FOOTER, withPrompt ? PROMPT_KEYBOARD : undefined);
+      await telegram.sendMessage(
+        chatId,
+        text + FOOTER,
+        sendOptions({ html, keyboard: withPrompt ? PROMPT_KEYBOARD : null })
+      );
       sent += 1;
       // Only after it actually arrived — otherwise someone who has blocked the
       // bot would be marked as asked without ever having seen the question.
@@ -141,7 +158,7 @@ export function describeAudience() {
 }
 
 /** The preview + buttons shared by /blast and /release. */
-export function broadcastPreview(text, pendingId, { draft = false } = {}) {
+export function broadcastPreview(text, pendingId, { draft = false, html = false } = {}) {
   const rows = [];
   // Draft notes describe a version nobody is running yet, so there's simply no
   // button that sends them to the community.
@@ -160,6 +177,8 @@ export function broadcastPreview(text, pendingId, { draft = false } = {}) {
 
   return {
     text: `${heading}\n\n${text}\n\n${describeAudience()}`,
-    keyboard: Markup.inlineKeyboard(rows),
+    // The preview shows the message as it will arrive, so it needs the same
+    // parse mode — otherwise the admin reads raw <a href> tags.
+    keyboard: sendOptions({ html, keyboard: Markup.inlineKeyboard(rows) }),
   };
 }
