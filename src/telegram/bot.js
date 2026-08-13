@@ -9,6 +9,7 @@ import { handleReminders } from "./commands/reminders.js";
 import { handleBlast } from "./commands/blast.js";
 import { handleRelease } from "./commands/release.js";
 import { handleFeedback } from "./commands/feedback.js";
+import { handleSettings, registerSubscriptionHandlers } from "./commands/settings.js";
 import { registerCallbackHandlers } from "./handlers/callbacks.js";
 import { registerReplyHandler } from "./handlers/replies.js";
 import { registerAwaitingLinkHandler } from "./handlers/awaitingLink.js";
@@ -41,6 +42,8 @@ export function createBot() {
   bot.command("blast", handleBlast);
   bot.command("release", handleRelease);
   bot.command("feedback", handleFeedback);
+  bot.command("settings", handleSettings);
+  registerSubscriptionHandlers(bot);
   registerCallbackHandlers(bot);
   registerReminderHandlers(bot);
   registerBroadcastActionHandlers(bot);

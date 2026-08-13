@@ -10,6 +10,7 @@ export async function handleStart(ctx) {
       "• /view — get the calendar's link\n" +
       "• Tap 🔔 on any listed event to get reminded before it starts\n" +
       "• /reminders — see (and cancel) reminders you've set\n" +
-      "• /feedback — tell the EW team about a bug or an idea"
+      "• /feedback — tell the EW team about a bug or an idea\n\n" +
+      "I'll occasionally message you when the bot gets new features. /settings turns that off."
   );
 }

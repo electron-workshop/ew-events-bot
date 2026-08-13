@@ -2,8 +2,7 @@ import { Markup } from "telegraf";
 import { isAdmin } from "../isAdmin.js";
 import { isAwaitingBroadcast, clearAwaitingBroadcast } from "../../store/broadcastState.js";
 import { setPendingBroadcast, getPendingBroadcast, clearPendingBroadcast } from "../../store/pendingBroadcast.js";
-import { getPrivateChatIds } from "../../store/knownChats.js";
-import { config } from "../../config.js";
+import { sendBroadcast } from "../sendBroadcast.js";
 import { log } from "../../logger.js";
 import { answerCb } from "../answerCb.js";
 
@@ -43,20 +42,7 @@ export function registerBroadcastActionHandlers(bot) {
     await answerCb(ctx, "Sending...");
     clearPendingBroadcast();
 
-    const chatIds = getPrivateChatIds().filter((id) => String(id) !== String(config.adminChatId));
-    let sent = 0;
-    let failed = 0;
-    for (const chatId of chatIds) {
-      try {
-        await ctx.telegram.sendMessage(chatId, pending.text);
-        sent += 1;
-      } catch (error) {
-        failed += 1;
-        log("blast", `failed to send to ${chatId}: ${error.message}`);
-      }
-    }
-
-    log("blast", `broadcast sent to ${sent}/${chatIds.length} chats (${failed} failed)`);
+    const { sent, failed } = await sendBroadcast(ctx.telegram, pending.text);
     await ctx.editMessageText(
       `📣 Broadcast sent to ${sent} chat(s)${failed ? ` (${failed} failed)` : ""}.`
     );

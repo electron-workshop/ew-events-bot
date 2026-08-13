@@ -14,6 +14,7 @@ const PUBLIC_COMMANDS = [
   "month",
   "reminders",
   "feedback",
+  "settings",
 ];
 
 const URL_PATTERN = /https?:\/\/\S+/i;

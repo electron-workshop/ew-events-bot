@@ -10,6 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `/settings` — turn off the messages the bot sends when it gets new features. The first one you receive has buttons to choose right there; after that every one has a line at the bottom reminding you `/settings` exists. Turning them off doesn't affect event reminders you've set.
 - `/feedback` — tell the EW team about a bug or an idea, either as `/feedback your message` or on its own and the bot waits for your next message. You choose whether to send it with your name or anonymously, and confirm before anything is passed on. It goes to the admin, who decides whether it becomes a GitHub issue and can rewrite it first. Your name and Telegram ID never appear on the issue either way.
 - Multi-day events. A conference running 9–5 across two days now goes in as 9–5 on each day, so it shows up under both days in `/today` and `/week` and you can set a reminder for either one. Previously only the first day was added.
 - Events now use the finish time from the page instead of always assuming they run for two hours. Where the page doesn't say, the preview marks the end time as estimated so you can correct it.
