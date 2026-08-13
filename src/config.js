@@ -15,6 +15,10 @@ export const config = {
   ollamaHost: process.env.OLLAMA_HOST || "http://localhost:11434",
   ollamaModel: process.env.OLLAMA_MODEL || "qwen3",
   adminChatId: process.env.ADMIN_CHAT_ID || null,
+  // Optional: without these, /feedback tells people it isn't set up rather
+  // than the bot refusing to start.
+  githubToken: process.env.GITHUB_TOKEN || null,
+  githubRepo: process.env.GITHUB_REPO || "electron-workshop/ew-events-bot",
   timezone: process.env.TIMEZONE || "Australia/Melbourne",
   calendarPublicUrl:
     process.env.CALENDAR_PUBLIC_URL ||

@@ -10,6 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `/feedback` — tell the EW team about a bug or an idea, either as `/feedback your message` or on its own and the bot waits for your next message. You choose whether to send it with your name or anonymously, and confirm before anything is passed on. It goes to the admin, who decides whether it becomes a GitHub issue and can rewrite it first. Your name and Telegram ID never appear on the issue either way.
 - Multi-day events. A conference running 9–5 across two days now goes in as 9–5 on each day, so it shows up under both days in `/today` and `/week` and you can set a reminder for either one. Previously only the first day was added.
 - Events now use the finish time from the page instead of always assuming they run for two hours. Where the page doesn't say, the preview marks the end time as estimated so you can correct it.
 - Events running past midnight, like a launch night from 8pm to 1am, now end on the following morning rather than the same evening.
@@ -27,6 +28,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - When editing, a date or time the bot can't read (like `time: 5pm`) is now called out, saying what format it needs. It used to be accepted and then quietly ignored.
+- The bot says something useful when it doesn't understand you, instead of "Not sure what to do with that". A mistyped command suggests the real one, and sending a bare event link tells you the exact command to send.
 - Events waiting for confirmation now stay open for 2 hours instead of 30 minutes.
 
 ## [0.1.0] - 2026-07-15

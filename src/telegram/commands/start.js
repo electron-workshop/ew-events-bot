@@ -9,6 +9,7 @@ export async function handleStart(ctx) {
       "• /today, /tomorrow, /week, /month — see what's coming up\n" +
       "• /view — get the calendar's link\n" +
       "• Tap 🔔 on any listed event to get reminded before it starts\n" +
-      "• /reminders — see (and cancel) reminders you've set"
+      "• /reminders — see (and cancel) reminders you've set\n" +
+      "• /feedback — tell the EW team about a bug or an idea"
   );
 }
