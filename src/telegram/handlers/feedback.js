@@ -8,6 +8,11 @@ import {
   clearAwaitingFeedback,
 } from "../../store/awaitingFeedback.js";
 import {
+  setAwaitingIssue,
+  clearAwaitingIssue,
+  getAwaitingIssue,
+} from "../../store/awaitingIssue.js";
+import {
   addFeedback,
   getFeedback,
   resolveFeedback,
@@ -31,14 +36,40 @@ function issueTitle(text) {
 // searchable. Only the date is included — a precise timestamp plus a small group
 // of users is enough to work out who sent what. The reference maps back to
 // src/data/feedback.json on the server, which is where the sender is recorded.
-function issueBody(entry) {
+function issueFooter(entry) {
   const submittedOn = new Date(entry.createdAt).toISOString().slice(0, 10);
-  return [
-    entry.text,
-    "",
-    "---",
-    `Sent via the Telegram bot on ${submittedOn}. Reference \`${entry.id}\` (sender recorded privately).`,
-  ].join("\n");
+  return `Sent via the Telegram bot on ${submittedOn}. Reference \`${entry.id}\` (sender recorded privately).`;
+}
+
+function issueBody(entry, body = entry.text) {
+  return [body, "", "---", issueFooter(entry)].join("\n");
+}
+
+function adminKeyboard(id) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback("Create issue", `feedback_file:${id}`),
+      Markup.button.callback("Write my own", `feedback_write:${id}`),
+    ],
+    [Markup.button.callback("Dismiss", `feedback_dismiss:${id}`)],
+  ]);
+}
+
+// Shared by the file-as-is and write-your-own paths. Leaves the feedback
+// pending when GitHub refuses, so the admin can fix the token and tap again.
+async function fileIssue(ctx, entry, { title, body }) {
+  let issue;
+  try {
+    issue = await createIssue({ title, body, labels: ["feedback"] });
+  } catch (error) {
+    log("feedback", `${entry.id} failed to file: ${error.message}`);
+    await ctx.reply(`Couldn't create the issue: ${error.message}`);
+    return null;
+  }
+
+  resolveFeedback(entry.id, { status: "filed", issueUrl: issue.html_url });
+  await ctx.reply(`Filed as issue #${issue.number}: ${issue.html_url}`);
+  return issue;
 }
 
 // Telegram button labels have to stay short, and a display name can be
@@ -110,6 +141,44 @@ export async function submitFeedback(ctx, text) {
 
   const { text: prompt, keyboard } = askWhoToSendAs(entry);
   await ctx.reply(prompt, keyboard);
+}
+
+// Captures the admin's next message after they tap "Write my own". Registered
+// before the feedback compose handler, so an admin who is somehow in both
+// states finishes the issue they were writing.
+export function registerIssueComposeHandler(bot) {
+  bot.on("text", async (ctx, next) => {
+    const feedbackId = getAwaitingIssue(ctx.chat.id, ctx.from.id);
+    if (!feedbackId || !isAdmin(ctx)) return next();
+
+    const text = ctx.message.text.trim();
+    if (/^\/cancel\b/i.test(text)) {
+      clearAwaitingIssue(ctx.chat.id, ctx.from.id);
+      await ctx.reply("Left it pending — the buttons above still work.");
+      return;
+    }
+
+    const entry = getFeedback(feedbackId);
+    if (!entry || entry.status !== "pending") {
+      clearAwaitingIssue(ctx.chat.id, ctx.from.id);
+      await ctx.reply("That feedback isn't waiting any more.");
+      return;
+    }
+
+    const lines = text.split("\n");
+    const title = lines[0].trim();
+    const body = lines.slice(1).join("\n").trim();
+    if (!title) {
+      await ctx.reply("The first line needs to be the issue title. Try again, or send /cancel.");
+      return;
+    }
+
+    // Clear first: if GitHub fails, the admin shouldn't be stuck in compose
+    // mode — the original buttons are still there to retry with.
+    clearAwaitingIssue(ctx.chat.id, ctx.from.id);
+    log("feedback", `${entry.id} filing with an admin-written issue`);
+    await fileIssue(ctx, entry, { title, body: issueBody(entry, body || entry.text) });
+  });
 }
 
 // Captures the admin's or user's next message after a bare /feedback.
@@ -186,14 +255,7 @@ export function registerFeedbackChoiceHandlers(bot) {
       return;
     }
 
-    await ctx.telegram.sendMessage(
-      config.adminChatId,
-      adminMessage(entry),
-      Markup.inlineKeyboard([
-        Markup.button.callback("Create issue", `feedback_file:${entry.id}`),
-        Markup.button.callback("Dismiss", `feedback_dismiss:${entry.id}`),
-      ])
-    );
+    await ctx.telegram.sendMessage(config.adminChatId, adminMessage(entry), adminKeyboard(entry.id));
   });
 }
 
@@ -215,23 +277,42 @@ export function registerFeedbackActionHandlers(bot) {
     }
 
     await answerCb(ctx, "Creating the issue...");
+    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+    await fileIssue(ctx, entry, {
+      title: issueTitle(entry.text),
+      body: issueBody(entry),
+    });
+  });
 
-    let issue;
-    try {
-      issue = await createIssue({
-        title: issueTitle(entry.text),
-        body: issueBody(entry),
-        labels: ["feedback"],
-      });
-    } catch (error) {
-      log("feedback", `${entry.id} failed to file: ${error.message}`);
-      await ctx.reply(`Couldn't create the issue: ${error.message}`);
+  // Lets the admin rewrite the issue before it's filed. Useful when the
+  // feedback is rambling, or when the first line — which would otherwise
+  // become the title — has the sender's name in it.
+  bot.action(/^feedback_write:(.+)$/, async (ctx) => {
+    if (!isAdmin(ctx)) {
+      await answerCb(ctx);
       return;
     }
 
-    resolveFeedback(entry.id, { status: "filed", issueUrl: issue.html_url });
-    await ctx.editMessageReplyMarkup(undefined).catch(() => {});
-    await ctx.reply(`Filed as issue #${issue.number}: ${issue.html_url}`);
+    const entry = getFeedback(ctx.match[1]);
+    if (!entry) {
+      await answerCb(ctx, "That feedback is no longer available.");
+      return;
+    }
+    if (entry.status !== "pending") {
+      await answerCb(ctx, `Already ${entry.status}.`);
+      return;
+    }
+
+    setAwaitingIssue(ctx.chat.id, ctx.from.id, entry.id);
+    log("feedback", `${entry.id} being rewritten by admin`);
+
+    await answerCb(ctx);
+    await ctx.reply(
+      "Send the issue as you want it — first line is the title, everything after is the body.\n\n" +
+        "For reference, filing it as-is would give:\n\n" +
+        `Title: ${issueTitle(entry.text)}\n\n${entry.text}\n\n` +
+        "Send /cancel to leave it pending instead."
+    );
   });
 
   bot.action(/^feedback_dismiss:(.+)$/, async (ctx) => {

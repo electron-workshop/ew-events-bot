@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { log } from "../logger.js";
+import { config } from "../config.js";
 
 // Persisted, unlike the other pending stores: feedback can sit waiting for the
 // admin for hours, and a deploy restart in that window would otherwise throw
@@ -104,6 +105,10 @@ export function recentCountFrom(userId) {
 }
 
 export function isRateLimited(userId) {
+  // The limit exists to stop one person flooding the admin's DMs. The admin
+  // flooding their own DMs is just testing, and they're the only person who
+  // ever needs to send feedback repeatedly.
+  if (config.adminChatId && String(userId) === String(config.adminChatId)) return false;
   return recentCountFrom(userId) >= RATE_LIMIT;
 }
 

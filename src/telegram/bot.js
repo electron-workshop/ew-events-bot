@@ -18,6 +18,7 @@ import {
   registerFeedbackComposeHandler,
   registerFeedbackActionHandlers,
   registerFeedbackChoiceHandlers,
+  registerIssueComposeHandler,
 } from "./handlers/feedback.js";
 import { registerFallbackHandler } from "./handlers/fallback.js";
 
@@ -46,6 +47,7 @@ export function createBot() {
   registerFeedbackActionHandlers(bot);
   registerFeedbackChoiceHandlers(bot);
   registerBroadcastComposeHandler(bot);
+  registerIssueComposeHandler(bot);
   registerFeedbackComposeHandler(bot);
   registerReplyHandler(bot);
   registerAwaitingLinkHandler(bot);
