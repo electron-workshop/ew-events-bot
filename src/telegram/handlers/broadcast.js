@@ -1,7 +1,7 @@
 import { isAdmin } from "../isAdmin.js";
 import { isAwaitingBroadcast, clearAwaitingBroadcast } from "../../store/broadcastState.js";
 import { setPendingBroadcast, getPendingBroadcast, clearPendingBroadcast } from "../../store/pendingBroadcast.js";
-import { sendBroadcast, broadcastPreview } from "../sendBroadcast.js";
+import { sendBroadcast, broadcastPreview, testerCounts } from "../sendBroadcast.js";
 import { log } from "../../logger.js";
 import { answerCb } from "../answerCb.js";
 
@@ -70,6 +70,40 @@ export function registerBroadcastActionHandlers(bot) {
             "The buttons are shown even though you've been asked before, so you can check them. " +
             "Tapping them does change your own setting.\n\n" +
             "The draft is still waiting — scroll up and hit Send to everyone when you're happy."
+    );
+  });
+
+  // A genuine broadcast to the tester list. Unlike the test send this records
+  // everything, so a tester who opts out really is gone from the next one.
+  bot.action(/^blast_testers:(.+)$/, async (ctx) => {
+    if (!isAdmin(ctx)) {
+      await answerCb(ctx);
+      return;
+    }
+
+    const pending = getPendingBroadcast(ctx.match[1]);
+    if (!pending) {
+      await answerCb(ctx, "This draft has expired.");
+      return;
+    }
+
+    const { configured, subscribed } = testerCounts();
+    if (subscribed === 0) {
+      await answerCb(
+        ctx,
+        configured === 0 ? "No beta testers configured." : "Every beta tester has opted out."
+      );
+      return;
+    }
+
+    await answerCb(ctx, "Sending to beta testers...");
+    const { sent, failed } = await sendBroadcast(ctx.telegram, pending.text, { testersOnly: true });
+    log("blast", `tester send: ${sent} sent, ${failed} failed`);
+
+    await ctx.reply(
+      `Sent to ${sent} beta tester${sent === 1 ? "" : "s"}${failed ? ` (${failed} failed)` : ""}. ` +
+        "This was a real send, so anyone who taps Turn these off will be skipped next time.\n\n" +
+        "The draft is still waiting — send it again to testers to check that, or Send to everyone when you're happy."
     );
   });
 

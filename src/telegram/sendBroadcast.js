@@ -2,9 +2,11 @@ import { Markup } from "telegraf";
 import {
   getBroadcastChatIds,
   getBroadcastStats,
+  getPrivateChats,
   needsBroadcastPrompt,
   markBroadcastPrompted,
 } from "../store/knownChats.js";
+import { config } from "../config.js";
 import { log } from "../logger.js";
 
 // Goes on every broadcast, so someone who ignored the buttons long ago still
@@ -30,16 +32,48 @@ const PROMPT_KEYBOARD = Markup.inlineKeyboard([
  *
  * Returns { sent, failed, prompted }.
  */
-export async function sendBroadcast(telegram, text, { onlyChatId = null } = {}) {
+const isTester = (chatId) => config.betaTesters.includes(String(chatId));
+
+/**
+ * Works out who gets this and, just as usefully, who doesn't and why — so the
+ * log can show that "to me only" and "to testers" really do differ.
+ */
+function planRecipients({ onlyChatId, testersOnly }) {
+  if (onlyChatId !== null) {
+    return { mode: "the admin only", recipients: [Number(onlyChatId)], skipped: [] };
+  }
+
+  const recipients = [];
+  const skipped = [];
+  for (const chat of getPrivateChats()) {
+    if (!chat.subscribed) {
+      skipped.push({ id: chat.id, why: "opted out" });
+    } else if (testersOnly && !isTester(chat.id)) {
+      skipped.push({ id: chat.id, why: "not a beta tester" });
+    } else {
+      recipients.push(chat.id);
+    }
+  }
+  return { mode: testersOnly ? "beta testers" : "everyone", recipients, skipped };
+}
+
+export async function sendBroadcast(telegram, text, { onlyChatId = null, testersOnly = false } = {}) {
   const isTest = onlyChatId !== null;
-  const chatIds = isTest ? [Number(onlyChatId)] : getBroadcastChatIds();
+  const { mode, recipients, skipped } = planRecipients({ onlyChatId, testersOnly });
+
+  const count = recipients.length;
+  log(
+    "broadcast",
+    `── sending to ${mode}: ${count} recipient${count === 1 ? "" : "s"}, ${skipped.length} skipped`
+  );
 
   let sent = 0;
   let failed = 0;
   let prompted = 0;
 
-  for (const chatId of chatIds) {
+  for (const chatId of recipients) {
     const withPrompt = isTest || needsBroadcastPrompt(chatId);
+    const tag = isTester(chatId) ? " [tester]" : "";
     try {
       await telegram.sendMessage(chatId, text + FOOTER, withPrompt ? PROMPT_KEYBOARD : undefined);
       sent += 1;
@@ -49,17 +83,37 @@ export async function sendBroadcast(telegram, text, { onlyChatId = null } = {}) 
         markBroadcastPrompted(chatId);
         prompted += 1;
       }
+      const buttons = withPrompt
+        ? isTest
+          ? " + opt-out buttons (forced, not recorded)"
+          : " + opt-out buttons (first broadcast)"
+        : "";
+      log("broadcast", `   ✓ ${chatId}${tag} delivered${buttons}`);
     } catch (error) {
       failed += 1;
-      log("broadcast", `failed to send to ${chatId}: ${error.message}`);
+      log("broadcast", `   ✗ ${chatId}${tag} FAILED: ${error.message}`);
     }
+  }
+
+  for (const { id, why } of skipped) {
+    log("broadcast", `   – ${id}${isTester(id) ? " [tester]" : ""} skipped: ${why}`);
   }
 
   log(
     "broadcast",
-    `${isTest ? "test " : ""}sent to ${sent}/${chatIds.length} chats (${failed} failed, ${prompted} prompted)`
+    `── ${mode}: ${sent} sent, ${failed} failed, ${prompted} newly prompted` +
+      (isTest ? " (nothing recorded — this was a preview)" : "")
   );
   return { sent, failed, prompted };
+}
+
+/** How many testers are configured, and how many would actually receive. */
+export function testerCounts() {
+  const configured = config.betaTesters.length;
+  const subscribed = getBroadcastChatIds().filter((id) =>
+    config.betaTesters.includes(String(id))
+  ).length;
+  return { configured, subscribed };
 }
 
 /** Who this would reach, spelled out before the admin commits to sending it. */
@@ -73,17 +127,33 @@ export function describeAudience() {
   if (optedOut > 0) {
     parts.push(`${optedOut} opted out.`);
   }
-  return parts.join(" ");
+
+  const summary = parts.join(" ");
+
+  const testers = testerCounts();
+  if (testers.configured === 0) return summary;
+
+  const skipped = testers.configured - testers.subscribed;
+  const testerLine =
+    `Beta testers: ${testers.subscribed} of ${testers.configured} would receive it` +
+    (skipped > 0 ? ` (${skipped} opted out).` : ".");
+  return `${summary}\n\n${testerLine}`;
 }
 
 /** The preview + buttons shared by /blast and /release. */
 export function broadcastPreview(text, pendingId) {
+  const rows = [
+    [Markup.button.callback("Send to everyone", `blast_confirm:${pendingId}`)],
+    [Markup.button.callback("Send to me only", `blast_test:${pendingId}`)],
+  ];
+  // Only worth offering when there's someone to send to.
+  if (config.betaTesters.length > 0) {
+    rows.splice(1, 0, [Markup.button.callback("Send to beta testers", `blast_testers:${pendingId}`)]);
+  }
+  rows.push([Markup.button.callback("Cancel", `blast_cancel:${pendingId}`)]);
+
   return {
     text: `Preview:\n\n${text}\n\n${describeAudience()}`,
-    keyboard: Markup.inlineKeyboard([
-      [Markup.button.callback("Send to everyone", `blast_confirm:${pendingId}`)],
-      [Markup.button.callback("Send to me only", `blast_test:${pendingId}`)],
-      [Markup.button.callback("Cancel", `blast_cancel:${pendingId}`)],
-    ]),
+    keyboard: Markup.inlineKeyboard(rows),
   };
 }

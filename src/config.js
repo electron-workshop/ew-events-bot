@@ -15,6 +15,13 @@ export const config = {
   ollamaHost: process.env.OLLAMA_HOST || "http://localhost:11434",
   ollamaModel: process.env.OLLAMA_MODEL || "qwen3",
   adminChatId: process.env.ADMIN_CHAT_ID || null,
+  // A few people who get broadcasts first, so the real thing can be checked on
+  // more than one chat before it goes out. Numeric Telegram IDs, comma
+  // separated. Empty is fine — the tester button just doesn't appear.
+  betaTesters: (process.env.BETA_TESTERS || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
   // Optional: without these, /feedback tells people it isn't set up rather
   // than the bot refusing to start.
   githubToken: process.env.GITHUB_TOKEN || null,

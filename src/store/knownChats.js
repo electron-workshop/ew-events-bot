@@ -48,6 +48,18 @@ export function getBroadcastChatIds() {
     .map(([id]) => Number(id));
 }
 
+/** Every private chat with its subscription state, for deciding and logging. */
+export function getPrivateChats() {
+  return Object.entries(chats)
+    .filter(([, info]) => info.type === "private")
+    .map(([id, info]) => ({
+      id: Number(id),
+      // Recorded before this setting existed means never opted out.
+      subscribed: info.announcements !== false,
+      prompted: Boolean(info.promptedAt),
+    }));
+}
+
 /** Who a broadcast would reach, for the preview shown before sending. */
 export function getBroadcastStats() {
   const priv = Object.entries(chats).filter(([, info]) => info.type === "private");
