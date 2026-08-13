@@ -32,7 +32,6 @@ export async function handleFeedback(ctx) {
   setAwaitingFeedback(ctx.chat.id, ctx.from.id);
   await ctx.reply(
     "What's on your mind? Send it in your next message — a bug, an idea, anything.\n\n" +
-      "The EW team sees your Telegram username. If it becomes a GitHub issue, your name isn't included — " +
-      "so avoid putting anything personal in the message itself."
+      "You'll get to choose whether to send it with your name or anonymously, and nothing is passed on until you confirm."
   );
 }

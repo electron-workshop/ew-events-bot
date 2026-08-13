@@ -11,6 +11,8 @@ import {
   addFeedback,
   getFeedback,
   resolveFeedback,
+  attributeFeedback,
+  cancelFeedback,
   isRateLimited,
   RATE_LIMIT,
 } from "../../store/pendingFeedback.js";
@@ -39,9 +41,56 @@ function issueBody(entry) {
   ].join("\n");
 }
 
-// Records the feedback and asks the admin whether to turn it into an issue.
-// Messages here go out without a parse_mode — the text is user-written and
-// would otherwise be able to break the message.
+// Telegram button labels have to stay short, and a display name can be
+// anything at all.
+const BUTTON_LABEL_MAX = 24;
+
+function shortLabel(label) {
+  return label.length > BUTTON_LABEL_MAX ? `${label.slice(0, BUTTON_LABEL_MAX - 1)}…` : label;
+}
+
+// Step one: the sender decides whether the admin sees who they are. Nothing has
+// been passed on at this point — the entry is only a draft.
+function askWhoToSendAs(entry) {
+  return {
+    text:
+      `Here's what I'll pass on:\n\n${entry.text}\n\n` +
+      `Send it with your name, or anonymously? Either way your name never goes on a GitHub issue.`,
+    keyboard: Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          `Send as ${shortLabel(entry.from.label)}`,
+          `fb_who:${entry.id}:named`
+        ),
+        Markup.button.callback("Send anonymously", `fb_who:${entry.id}:anon`),
+      ],
+      [Markup.button.callback("Cancel", `fb_cancel:${entry.id}`)],
+    ]),
+  };
+}
+
+// Step two, because these buttons sit next to each other and the choice can't
+// be taken back once the admin has read it.
+function askToConfirm(entry, anonymous) {
+  const who = anonymous ? "anonymously" : `as ${entry.from.label}`;
+  return {
+    text: `Send this to the EW team ${who}?\n\n${entry.text}`,
+    keyboard: Markup.inlineKeyboard([
+      [Markup.button.callback(`Yes, send ${who}`, `fb_send:${entry.id}:${anonymous ? "anon" : "named"}`)],
+      [Markup.button.callback("Back", `fb_back:${entry.id}`)],
+      [Markup.button.callback("Cancel", `fb_cancel:${entry.id}`)],
+    ]),
+  };
+}
+
+function adminMessage(entry) {
+  const who = entry.anonymous ? "Feedback (sent anonymously)" : `Feedback from ${entry.from.label}`;
+  return `💬 ${who}:\n\n${entry.text}\n\nFile this as a GitHub issue?`;
+}
+
+// Takes what someone wrote and offers them the choice. Messages here go out
+// without a parse_mode — the text is user-written and would otherwise be able
+// to break the message.
 export async function submitFeedback(ctx, text) {
   if (isRateLimited(ctx.from.id)) {
     log("feedback", `rate limited ${ctx.from.id}`);
@@ -57,23 +106,10 @@ export async function submitFeedback(ctx, text) {
     from: { id: ctx.from.id, label },
     chatId: ctx.chat.id,
   });
-  log("feedback", `${entry.id} received from ${label} (${ctx.from.id})`);
+  log("feedback", `${entry.id} drafted by ${label} (${ctx.from.id}), awaiting their choice`);
 
-  await ctx.reply("Thanks — passed on to the EW team. 🙏");
-
-  if (!config.adminChatId) {
-    log("feedback", `${entry.id} stored, but ADMIN_CHAT_ID isn't set so nobody was notified`);
-    return;
-  }
-
-  await ctx.telegram.sendMessage(
-    config.adminChatId,
-    `💬 Feedback from ${label}:\n\n${text}\n\nFile this as a GitHub issue?`,
-    Markup.inlineKeyboard([
-      Markup.button.callback("Create issue", `feedback_file:${entry.id}`),
-      Markup.button.callback("Dismiss", `feedback_dismiss:${entry.id}`),
-    ])
-  );
+  const { text: prompt, keyboard } = askWhoToSendAs(entry);
+  await ctx.reply(prompt, keyboard);
 }
 
 // Captures the admin's or user's next message after a bare /feedback.
@@ -83,6 +119,81 @@ export function registerFeedbackComposeHandler(bot) {
 
     clearAwaitingFeedback(ctx.chat.id, ctx.from.id);
     await submitFeedback(ctx, ctx.message.text);
+  });
+}
+
+// The buttons the *sender* sees, deciding how their feedback is attributed.
+// Only the person who wrote it may touch these.
+export function registerFeedbackChoiceHandlers(bot) {
+  async function ownDraft(ctx, id) {
+    const entry = getFeedback(id);
+    if (!entry || String(entry.from.id) !== String(ctx.from.id)) {
+      await answerCb(ctx, "That's not yours to send.");
+      return null;
+    }
+    if (entry.status !== "draft") {
+      await answerCb(ctx, entry.status === "cancelled" ? "Already cancelled." : "Already sent.");
+      return null;
+    }
+    return entry;
+  }
+
+  bot.action(/^fb_who:([^:]+):(named|anon)$/, async (ctx) => {
+    const entry = await ownDraft(ctx, ctx.match[1]);
+    if (!entry) return;
+
+    await answerCb(ctx);
+    const { text, keyboard } = askToConfirm(entry, ctx.match[2] === "anon");
+    await ctx.editMessageText(text, keyboard).catch(async () => {
+      await ctx.reply(text, keyboard);
+    });
+  });
+
+  bot.action(/^fb_back:(.+)$/, async (ctx) => {
+    const entry = await ownDraft(ctx, ctx.match[1]);
+    if (!entry) return;
+
+    await answerCb(ctx);
+    const { text, keyboard } = askWhoToSendAs(entry);
+    await ctx.editMessageText(text, keyboard).catch(async () => {
+      await ctx.reply(text, keyboard);
+    });
+  });
+
+  bot.action(/^fb_cancel:(.+)$/, async (ctx) => {
+    const entry = await ownDraft(ctx, ctx.match[1]);
+    if (!entry) return;
+
+    cancelFeedback(entry.id);
+    log("feedback", `${entry.id} cancelled by its sender`);
+    await answerCb(ctx, "Cancelled.");
+    await ctx.editMessageText("Cancelled — nothing was sent.").catch(() => {});
+  });
+
+  bot.action(/^fb_send:([^:]+):(named|anon)$/, async (ctx) => {
+    const draft = await ownDraft(ctx, ctx.match[1]);
+    if (!draft) return;
+
+    const anonymous = ctx.match[2] === "anon";
+    const entry = attributeFeedback(draft.id, { anonymous });
+    log("feedback", `${entry.id} sent ${anonymous ? "anonymously" : `as ${entry.from.label}`}`);
+
+    await answerCb(ctx, "Sent.");
+    await ctx.editMessageText(`Thanks — passed on to the EW team. 🙏`).catch(() => {});
+
+    if (!config.adminChatId) {
+      log("feedback", `${entry.id} stored, but ADMIN_CHAT_ID isn't set so nobody was notified`);
+      return;
+    }
+
+    await ctx.telegram.sendMessage(
+      config.adminChatId,
+      adminMessage(entry),
+      Markup.inlineKeyboard([
+        Markup.button.callback("Create issue", `feedback_file:${entry.id}`),
+        Markup.button.callback("Dismiss", `feedback_dismiss:${entry.id}`),
+      ])
+    );
   });
 }
 

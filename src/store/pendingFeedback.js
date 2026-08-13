@@ -10,6 +10,12 @@ const FILE_PATH = path.join(new URL("../data/", import.meta.url).pathname, "feed
 
 const RATE_LIMIT = 3;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
+// Drafts are feedback someone typed but never chose to send. They're kept only
+// long enough for the buttons under the message to still work.
+const DRAFT_TTL_MS = 60 * 60 * 1000;
+// Abandoning a draft shouldn't use up someone's quota — only feedback that
+// actually reached the admin counts.
+const COUNTS_TOWARD_LIMIT = new Set(["pending", "filed", "dismissed"]);
 
 function load() {
   try {
@@ -27,19 +33,47 @@ function save(entries) {
   fs.writeFileSync(FILE_PATH, JSON.stringify(entries, null, 2));
 }
 
-let feedback = load(); // [{ id, text, from, chatId, createdAt, status, issueUrl }]
+// [{ id, text, from, chatId, createdAt, status, anonymous, issueUrl }]
+let feedback = load();
+
+function pruneDrafts(entries) {
+  const cutoff = Date.now() - DRAFT_TTL_MS;
+  return entries.filter((entry) => entry.status !== "draft" || entry.createdAt > cutoff);
+}
 
 export function addFeedback({ text, from, chatId }) {
+  feedback = pruneDrafts(feedback);
   const entry = {
     id: crypto.randomUUID().slice(0, 8),
     text,
-    from, // { id, label }
+    from, // { id, label } — kept on the server whatever the sender chooses
     chatId,
     createdAt: Date.now(),
-    status: "pending", // pending | filed | dismissed
+    // Starts as a draft: the sender still has to say whether their name goes
+    // with it and confirm that, before the admin is told anything at all.
+    status: "draft", // draft | pending | filed | dismissed | cancelled
+    anonymous: null,
     issueUrl: null,
   };
   feedback.push(entry);
+  save(feedback);
+  return entry;
+}
+
+/** Records the sender's choice and releases the draft to the admin. */
+export function attributeFeedback(id, { anonymous }) {
+  const entry = getFeedback(id);
+  if (!entry) return null;
+  entry.anonymous = anonymous;
+  entry.status = "pending";
+  save(feedback);
+  return entry;
+}
+
+export function cancelFeedback(id) {
+  const entry = getFeedback(id);
+  if (!entry) return null;
+  entry.status = "cancelled";
   save(feedback);
   return entry;
 }
@@ -62,7 +96,10 @@ export function resolveFeedback(id, { status, issueUrl = null }) {
 export function recentCountFrom(userId) {
   const cutoff = Date.now() - RATE_WINDOW_MS;
   return feedback.filter(
-    (entry) => String(entry.from.id) === String(userId) && entry.createdAt > cutoff
+    (entry) =>
+      String(entry.from.id) === String(userId) &&
+      entry.createdAt > cutoff &&
+      COUNTS_TOWARD_LIMIT.has(entry.status)
   ).length;
 }
 

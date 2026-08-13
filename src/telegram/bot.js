@@ -14,7 +14,11 @@ import { registerReplyHandler } from "./handlers/replies.js";
 import { registerAwaitingLinkHandler } from "./handlers/awaitingLink.js";
 import { registerReminderHandlers } from "./handlers/reminders.js";
 import { registerBroadcastComposeHandler, registerBroadcastActionHandlers } from "./handlers/broadcast.js";
-import { registerFeedbackComposeHandler, registerFeedbackActionHandlers } from "./handlers/feedback.js";
+import {
+  registerFeedbackComposeHandler,
+  registerFeedbackActionHandlers,
+  registerFeedbackChoiceHandlers,
+} from "./handlers/feedback.js";
 import { registerFallbackHandler } from "./handlers/fallback.js";
 
 export function createBot() {
@@ -40,6 +44,7 @@ export function createBot() {
   registerReminderHandlers(bot);
   registerBroadcastActionHandlers(bot);
   registerFeedbackActionHandlers(bot);
+  registerFeedbackChoiceHandlers(bot);
   registerBroadcastComposeHandler(bot);
   registerFeedbackComposeHandler(bot);
   registerReplyHandler(bot);
