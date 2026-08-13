@@ -48,6 +48,18 @@ export function getBroadcastChatIds() {
     .map(([id]) => Number(id));
 }
 
+/** Who a broadcast would reach, for the preview shown before sending. */
+export function getBroadcastStats() {
+  const priv = Object.entries(chats).filter(([, info]) => info.type === "private");
+  const subscribed = priv.filter(([, info]) => info.announcements !== false);
+  return {
+    known: priv.length,
+    subscribed: subscribed.length,
+    unprompted: subscribed.filter(([, info]) => !info.promptedAt).length,
+    optedOut: priv.length - subscribed.length,
+  };
+}
+
 export function isSubscribed(chatId) {
   const info = chats[String(chatId)];
   return !info || info.announcements !== false;

@@ -1,5 +1,5 @@
-import { Markup } from "telegraf";
 import { isAdmin } from "../isAdmin.js";
+import { broadcastPreview } from "../sendBroadcast.js";
 import { version } from "../../version.js";
 import { getChangelogEntry } from "../../services/changelog.js";
 import { formatReleaseNotes } from "../formatRelease.js";
@@ -29,11 +29,6 @@ export async function handleRelease(ctx) {
   const pending = setPendingBroadcast(text);
   log("release", `release notes for v${version} drafted by ${ctx.from.id}`);
 
-  await ctx.reply(
-    `Preview:\n\n${text}\n\nSend this to everyone who's messaged the bot?`,
-    Markup.inlineKeyboard([
-      Markup.button.callback("Send to everyone", `blast_confirm:${pending.id}`),
-      Markup.button.callback("Cancel", `blast_cancel:${pending.id}`),
-    ])
-  );
+  const preview = broadcastPreview(text, pending.id);
+  await ctx.reply(preview.text, preview.keyboard);
 }
