@@ -6,12 +6,46 @@ const MAX_TEXT_LENGTH = 8_000; // keep prompt size sane for the LLM
 
 const JSON_LD_PATTERN = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
 
+// schema.org's Event subtypes. Real pages rarely say plain "Event" — Eventbrite
+// tags a talk as EducationEvent, Humanitix a gig as MusicEvent — so matching
+// only the base type silently misses structured data that is right there.
+const EVENT_TYPES = new Set([
+  "Event",
+  "BusinessEvent",
+  "ChildrensEvent",
+  "ComedyEvent",
+  "CourseInstance",
+  "DanceEvent",
+  "DeliveryEvent",
+  "EducationEvent",
+  "EventSeries",
+  "ExhibitionEvent",
+  "Festival",
+  "FoodEvent",
+  "Hackathon",
+  "LiteraryEvent",
+  "MusicEvent",
+  "PublicationEvent",
+  "SaleEvent",
+  "ScreeningEvent",
+  "SocialEvent",
+  "SportsEvent",
+  "TheaterEvent",
+  "VisualArtsEvent",
+]);
+
+function isEventType(type) {
+  // "@type" is occasionally an array, e.g. ["Event", "SocialEvent"].
+  const types = Array.isArray(type) ? type : [type];
+  return types.some((value) => typeof value === "string" && EVENT_TYPES.has(value));
+}
+
 // Many event platforms (Luma, Eventbrite, Meetup...) embed a schema.org
 // Event block in a <script type="application/ld+json"> tag for search/social
 // previews. It's far more reliable than scraped visible text — e.g. it has
 // the real start/end timestamps even when the rendered page just says
 // "Loading..." to a non-JS fetch. Find it if present.
-function extractEventJsonLd(html) {
+export function extractEventJsonLd(html) {
   let match;
   while ((match = JSON_LD_PATTERN.exec(html))) {
     let parsed;
@@ -22,9 +56,7 @@ function extractEventJsonLd(html) {
     }
     const candidates = Array.isArray(parsed) ? parsed : parsed["@graph"] || [parsed];
     for (const candidate of candidates) {
-      const type = candidate?.["@type"];
-      const isEvent = type === "Event" || (Array.isArray(type) && type.includes("Event"));
-      if (isEvent) return candidate;
+      if (candidate && isEventType(candidate["@type"])) return candidate;
     }
   }
   return null;
@@ -56,13 +88,16 @@ function summarizeEventJsonLd(event) {
 }
 
 /**
- * Fetches a URL and converts it to text for LLM extraction, preferring a
- * schema.org Event JSON-LD block (if present) over the rendered page text.
+ * Fetches a URL and returns `{ text, eventJsonLd }`: page text prepared for
+ * LLM extraction, plus the raw schema.org Event block when the page has one.
+ * The block is handed back rather than only folded into the text so callers
+ * can read it directly and skip the model entirely — see eventFromJsonLd.js.
+ *
  * Returns null if the fetch fails or the page has no usable content at all
  * (e.g. a JS-rendered page with no structured data either) — callers should
  * treat that as "couldn't read this page automatically".
  */
-export async function fetchPageText(url) {
+export async function fetchPage(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -118,5 +153,8 @@ export async function fetchPageText(url) {
   }
   parts.push("Page text:\n" + text);
 
-  return parts.join("\n\n").slice(0, MAX_TEXT_LENGTH);
+  return {
+    text: parts.join("\n\n").slice(0, MAX_TEXT_LENGTH),
+    eventJsonLd,
+  };
 }

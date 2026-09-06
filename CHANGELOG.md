@@ -13,12 +13,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Highlights
 
+- A calendar app you can open right here in Telegram, or in a browser
 - Multi-day event support added
+- Event links from most sites are now read instantly
 - `/feedback` - tell the EWorkshop team about a bug or an idea
 - `/settings` - choose whether you get these update messages
 
 ### Added
 
+- A calendar app. Open it from the button on /start to browse everything that's coming up, and to add an event whose page the bot can't read on its own — you get a form to fill in, and it goes on the same calendar. It's the same page at calendar.electronworkshop.com.au, where anyone can browse the calendar without Telegram.
 - `/settings` — turn off the messages the bot sends when it gets new features. The first one you receive has buttons to choose right there; after that every one has a line at the bottom reminding you `/settings` exists. Turning them off doesn't affect event reminders you've set.
 - `/feedback` — tell the EW team about a bug or an idea, either as `/feedback your message` or on its own and the bot waits for your next message. You choose whether to send it with your name or anonymously, and confirm before anything is passed on. It goes to the admin, who decides whether it becomes a GitHub issue and can rewrite it first. Your name and Telegram ID never appear on the issue either way.
 - Multi-day events. A conference running 9–5 across two days now goes in as 9–5 on each day, so it shows up under both days in `/today` and `/week` and you can set a reminder for either one. Previously only the first day was added.
@@ -28,6 +31,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Structured event data is now recognised on far more pages. Sites label an event by its kind — Eventbrite tags a talk as an "education event", a gig gets tagged as a "music event" — and only the generic label was being looked for, so most pages that had usable data were treated as if they had none.
 - All-day events are no longer written with the same start and end date, which Google Calendar treats as an event of no length.
 - Editing an event works whether you reply to the bot's message or just send the corrected details as a normal message. Before, only a proper Telegram reply worked and anything else got no response at all.
 - The bot always answers a direct message now, instead of silently ignoring anything it didn't understand.
@@ -37,6 +41,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The bot now reads an event out of the page's own published details rather than interpreting the page text. Most event sites publish them, and for those the preview is instant and the date, time and location are exactly what the page says. For the pages that don't, the bot hands you over to the app's form instead of guessing — so a link either comes back right or comes back honestly.
 - When editing, a date or time the bot can't read (like `time: 5pm`) is now called out, saying what format it needs. It used to be accepted and then quietly ignored.
 - The bot says something useful when it doesn't understand you, instead of "Not sure what to do with that". A mistyped command suggests the real one, and sending a bare event link tells you the exact command to send.
 - Events waiting for confirmation now stay open for 2 hours instead of 30 minutes.

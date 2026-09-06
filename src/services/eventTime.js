@@ -1,3 +1,5 @@
+import { log } from "../logger.js";
+
 const DEFAULT_DURATION_HOURS = 2;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
@@ -84,4 +86,39 @@ export function resolveEndTime(time, endTime) {
  */
 export function endsNextDay(time, endTime) {
   return isTimeKey(time) && isTimeKey(endTime) && endTime < time;
+}
+
+/**
+ * Tidies up the four scheduling fields so the calendar never sees a
+ * combination it can't represent. The prompt asks for all of this, but the
+ * model doesn't always comply and people can type anything in the edit flow.
+ */
+export function normalizeSchedule(fields) {
+  const result = { ...fields };
+
+  const range = parseDateRange(result.date);
+  if (range) {
+    log("schedule", `split date range "${result.date}" into ${range[0]} / ${range[1]}`);
+    result.date = range[0];
+    result.end_date = result.end_date || range[1];
+  }
+
+  // Equal dates mean single-day; an earlier end date is bad data. Either way
+  // there's no span to represent.
+  if (result.end_date && dayCount(result.date, result.end_date) === 1) {
+    if (result.end_date !== result.date) {
+      log("schedule", `ignoring end_date ${result.end_date}, not after date ${result.date}`);
+    }
+    result.end_date = null;
+  }
+
+  // An end time with nothing to end from can't be placed on the clock, and
+  // would otherwise turn an all-day event into a timed one starting at
+  // midnight.
+  if (result.end_time && !result.time) {
+    log("schedule", `ignoring end_time ${result.end_time}, no start time to pair it with`);
+    result.end_time = null;
+  }
+
+  return result;
 }

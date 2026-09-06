@@ -37,7 +37,7 @@ Then:
 git push && git push --tags
 ```
 
-Deploy (pull on the server, `pm2 restart ew-events-bot`), then run `/release` in
+Deploy (Coolify redeploys on the push), then run `/release` in
 the bot as the admin. It reads the current version's changelog section, shows you
 a preview, and sends it to everyone who has DM'd the bot once you confirm. It's
 the same preview and confirm flow as `/blast`.

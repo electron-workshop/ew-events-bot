@@ -9,7 +9,11 @@ async function getCalendarClient() {
   if (calendarClient) return calendarClient;
 
   const auth = new google.auth.GoogleAuth({
-    keyFile: config.googleServiceAccountKeyPath,
+    // Credentials inline when the platform gives secrets as env vars, a key
+    // file when they're on disk. config.js guarantees exactly one is set.
+    ...(config.googleServiceAccountCredentials
+      ? { credentials: config.googleServiceAccountCredentials }
+      : { keyFile: config.googleServiceAccountKeyPath }),
     scopes: ["https://www.googleapis.com/auth/calendar.events"],
   });
 

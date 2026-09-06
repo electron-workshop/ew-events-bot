@@ -8,7 +8,7 @@ import {
 import { formatFieldsSummary, EDIT_INSTRUCTIONS } from "../formatEvent.js";
 import { log } from "../../logger.js";
 import { parseFieldLines, splitInvalidFields, FIELD_FORMATS } from "../fields.js";
-import { normalizeSchedule } from "../../services/extractEvent.js";
+import { normalizeSchedule } from "../../services/eventTime.js";
 
 export function registerReplyHandler(bot) {
   bot.on("text", async (ctx, next) => {

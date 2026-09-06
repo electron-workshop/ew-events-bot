@@ -2,8 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { log } from "../logger.js";
+import { dataFile } from "./dataDir.js";
 
-const FILE_PATH = path.join(new URL("../data/", import.meta.url).pathname, "reminders.json");
+const FILE_PATH = dataFile("reminders.json");
 
 export const LEAD_TIME_MS = {
   "1h": 60 * 60 * 1000,

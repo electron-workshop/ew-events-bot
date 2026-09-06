@@ -2,12 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { log } from "../logger.js";
+import { dataFile } from "./dataDir.js";
 import { config } from "../config.js";
 
 // Persisted, unlike the other pending stores: feedback can sit waiting for the
 // admin for hours, and a deploy restart in that window would otherwise throw
 // away something a person took the trouble to write.
-const FILE_PATH = path.join(new URL("../data/", import.meta.url).pathname, "feedback.json");
+const FILE_PATH = dataFile("feedback.json");
 
 const RATE_LIMIT = 3;
 const RATE_WINDOW_MS = 60 * 60 * 1000;

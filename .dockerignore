@@ -1,0 +1,10 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+*.log
+docs
+src/data
+src/*.json
+!src/package.json

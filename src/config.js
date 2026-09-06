@@ -8,12 +8,35 @@ function required(name) {
   return value;
 }
 
+// The service account can arrive either way. A file path suits a VM where the
+// key sits on disk; the raw JSON suits a container platform like Coolify,
+// where there is no file to mount and secrets are set as env vars.
+function googleCredentials() {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON: ${error.message}`);
+  }
+}
+
+const credentials = googleCredentials();
+if (!credentials && !process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH) {
+  throw new Error(
+    "Set either GOOGLE_SERVICE_ACCOUNT_JSON (the key's contents) or " +
+      "GOOGLE_SERVICE_ACCOUNT_KEY_PATH (a path to it). See .env.example."
+  );
+}
+
 export const config = {
   telegramBotToken: required("TELEGRAM_BOT_TOKEN"),
-  googleServiceAccountKeyPath: required("GOOGLE_SERVICE_ACCOUNT_KEY_PATH"),
+  googleServiceAccountCredentials: credentials,
+  googleServiceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || null,
   googleCalendarId: required("GOOGLE_CALENDAR_ID"),
-  ollamaHost: process.env.OLLAMA_HOST || "http://localhost:11434",
-  ollamaModel: process.env.OLLAMA_MODEL || "qwen3",
+  // The Mini App, for pages the bot can't read on its own and for browsing the
+  // calendar. Unset, the bot simply never offers the button.
+  miniAppUrl: process.env.MINI_APP_URL || null,
   adminChatId: process.env.ADMIN_CHAT_ID || null,
   // A few people who get broadcasts first, so the real thing can be checked on
   // more than one chat before it goes out. Numeric Telegram IDs, comma

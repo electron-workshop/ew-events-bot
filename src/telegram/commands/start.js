@@ -1,3 +1,5 @@
+import { miniAppKeyboard, hasMiniApp } from "../miniApp.js";
+
 export async function handleStart(ctx) {
   await ctx.reply(
     "⚡ Welcome to the Electron Ecosystem!\n\n" +
@@ -11,6 +13,10 @@ export async function handleStart(ctx) {
       "• Tap 🔔 on any listed event to get reminded before it starts\n" +
       "• /reminders — see (and cancel) reminders you've set\n" +
       "• /feedback — tell the EW team about a bug or an idea\n\n" +
-      "I'll occasionally message you when the bot gets new features. /settings turns that off."
+      (hasMiniApp()
+        ? "There's also an app — browse the whole calendar, and add events whose page I can't read myself.\n\n"
+        : "") +
+      "I'll occasionally message you when the bot gets new features. /settings turns that off.",
+    miniAppKeyboard(ctx, "Open the events app")
   );
 }

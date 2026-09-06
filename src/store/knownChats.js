@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { log } from "../logger.js";
+import { dataFile } from "./dataDir.js";
 
-const FILE_PATH = path.join(new URL("../data/", import.meta.url).pathname, "knownChats.json");
+const FILE_PATH = dataFile("knownChats.json");
 
 function load() {
   try {

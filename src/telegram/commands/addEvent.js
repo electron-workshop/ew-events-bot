@@ -1,6 +1,7 @@
 import { Markup } from "telegraf";
-import { fetchPageText } from "../../services/fetchPage.js";
-import { extractEvent } from "../../services/extractEvent.js";
+import { fetchPage } from "../../services/fetchPage.js";
+import { eventFromJsonLd } from "../../services/eventFromJsonLd.js";
+import { miniAppKeyboard, hasMiniApp } from "../miniApp.js";
 import { createPending } from "../../store/pendingEvents.js";
 import { setAwaitingLink } from "../../store/awaitingLink.js";
 import { formatFieldsSummary } from "../formatEvent.js";
@@ -34,44 +35,24 @@ export async function processEventUrl(ctx, url) {
   const statusMessage = await ctx.reply("Fetching that page and reading the details...");
 
   log("fetch", `fetching ${url}`);
-  const pageText = await fetchPageText(url);
-  if (!pageText) {
-    log("fetch", `failed or empty result for ${url}`);
-    await ctx.telegram.editMessageText(
-      ctx.chat.id,
-      statusMessage.message_id,
-      undefined,
-      "I couldn't read that page automatically (it may need JavaScript to load, or didn't respond). " +
-        "Manual paste/screenshot submission isn't wired up yet — please add this event manually for now, or try a different link (e.g. a plain event page instead of a social media post)."
-    );
-    return;
-  }
-  log("fetch", `got ${pageText.length} chars of text from ${url}`);
+  const page = await fetchPage(url);
 
-  let extraction;
-  try {
-    log("extract", `sending page text to Ollama for ${url}`);
-    extraction = await extractEvent(pageText, url);
-    log("extract", `result:`, extraction);
-  } catch (error) {
-    log("extract", `error: ${error.message}`);
-    await ctx.telegram.editMessageText(
-      ctx.chat.id,
-      statusMessage.message_id,
-      undefined,
-      `Something went wrong extracting the details (${error.message}). Please try again in a moment.`
-    );
-    return;
-  }
+  // The bot reads an event out of the page's own structured data. When a page
+  // doesn't publish any, there's nothing to read and no guessing to be done —
+  // the app has a form for exactly that, so hand it over rather than failing.
+  const extraction = page?.eventJsonLd ? eventFromJsonLd(page.eventJsonLd, url) : null;
 
-  if (!extraction.complete) {
-    log("extract", "incomplete extraction (missing title or date), stopping");
+  if (!extraction) {
+    log("add_event", page ? `no usable structured data on ${url}` : `couldn't fetch ${url}`);
     await ctx.telegram.editMessageText(
       ctx.chat.id,
       statusMessage.message_id,
       undefined,
-      "I could read the page but couldn't find enough detail (at least a title and date) to create an event. " +
-        "Please add this one manually for now."
+      "That page doesn't publish its event details in a way I can read.\n\n" +
+        (hasMiniApp()
+          ? "Open the app below and paste the link there — you can fill in the details yourself and it'll go on the same calendar."
+          : "Please add this one to the calendar manually for now."),
+      miniAppKeyboard(ctx, "Add it in the app")
     );
     return;
   }
