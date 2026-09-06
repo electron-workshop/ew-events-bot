@@ -37,6 +37,11 @@ export const config = {
   // The Mini App, for pages the bot can't read on its own and for browsing the
   // calendar. Unset, the bot simply never offers the button.
   miniAppUrl: process.env.MINI_APP_URL || null,
+  // Where to tell the web app what version the bot is on, so its version panel
+  // isn't guessing. Defaults to the Mini App's own origin, since that's the
+  // same deployment. Both this and the secret must be set to announce at all.
+  webAppUrl: process.env.WEB_APP_URL || process.env.MINI_APP_URL || null,
+  versionPingSecret: process.env.VERSION_PING_SECRET || null,
   adminChatId: process.env.ADMIN_CHAT_ID || null,
   // A few people who get broadcasts first, so the real thing can be checked on
   // more than one chat before it goes out. Numeric Telegram IDs, comma
