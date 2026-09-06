@@ -11,6 +11,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-06
+
 ### Highlights
 
 - A calendar app you can open right here in Telegram, or in a browser
