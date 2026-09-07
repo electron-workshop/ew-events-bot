@@ -2,7 +2,7 @@
 
 Notes for each released version of the bot.
 
-`/release` broadcasts the `### Highlights` section only — three or four short
+`/release` broadcasts the `### Highlights` section only: three or four short
 lines, written for the people using the bot. Everything else in a version's
 section is the full record, and the broadcast links here for it. Without a
 Highlights section the whole entry gets sent, which is usually too long.
@@ -10,52 +10,51 @@ Highlights section the whole entry gets sent, which is usually too long.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
-
 ## [0.2.0] - 2026-09-06
 
 ### Highlights
 
-- A calendar app you can open right here in Telegram, or in a browser
-- Multi-day event support added
-- Event links from most sites are now read instantly
-- `/feedback` - tell the EWorkshop team about a bug or an idea
-- `/settings` - choose whether you get these update messages
+- A calendar app you can open in Telegram or in a browser
+- Multi-day events now work
+- Event links from most sites are read instantly
+- `/feedback` to report a bug or suggest an idea
+- `/settings` to turn update messages off
 
 ### Added
 
-- A calendar app. Open it from the button on /start to browse everything that's coming up, and to add an event whose page the bot can't read on its own — you get a form to fill in, and it goes on the same calendar. It's the same page at calendar.electronworkshop.com.au, where anyone can browse the calendar without Telegram.
-- `/settings` — turn off the messages the bot sends when it gets new features. The first one you receive has buttons to choose right there; after that every one has a line at the bottom reminding you `/settings` exists. Turning them off doesn't affect event reminders you've set.
-- `/feedback` — tell the EW team about a bug or an idea, either as `/feedback your message` or on its own and the bot waits for your next message. You choose whether to send it with your name or anonymously, and confirm before anything is passed on. It goes to the admin, who decides whether it becomes a GitHub issue and can rewrite it first. Your name and Telegram ID never appear on the issue either way.
-- Multi-day events. A conference running 9–5 across two days now goes in as 9–5 on each day, so it shows up under both days in `/today` and `/week` and you can set a reminder for either one. Previously only the first day was added.
-- Events now use the finish time from the page instead of always assuming they run for two hours. Where the page doesn't say, the preview marks the end time as estimated so you can correct it.
-- Events running past midnight, like a launch night from 8pm to 1am, now end on the following morning rather than the same evening.
-- `end_date` and `end_time` are fields you can set when editing, for when the bot misses that an event runs across several days or gets the finish time wrong.
+- A calendar app. Browse what's coming up, and add events the bot can't read on its own. Open it from `/start`, or visit calendar.electronworkshop.com.au.
+- `/settings` to turn off update messages. Event reminders are not affected.
+- `/feedback` to send the EW team a bug or an idea, with your name or anonymously.
+- Multi-day events are added to every day they run, not just the first.
+- Finish times come from the event page instead of always assuming two hours.
+- Events running past midnight now end the next morning.
+- `end_date` and `end_time` can be set when editing.
 
 ### Fixed
 
-- Structured event data is now recognised on far more pages. Sites label an event by its kind — Eventbrite tags a talk as an "education event", a gig gets tagged as a "music event" — and only the generic label was being looked for, so most pages that had usable data were treated as if they had none.
-- All-day events are no longer written with the same start and end date, which Google Calendar treats as an event of no length.
-- Editing an event works whether you reply to the bot's message or just send the corrected details as a normal message. Before, only a proper Telegram reply worked and anything else got no response at all.
-- The bot always answers a direct message now, instead of silently ignoring anything it didn't understand.
-- A dropped connection while tapping Confirm, Edit or Cancel no longer makes the button do nothing.
-- Event details containing an underscore, asterisk or ampersand no longer break the message the bot sends back. A link with `utm_source=` in it was enough to do this.
-- If the bot fails to send the updated details, you can just send them again instead of tapping Edit a second time.
+- Event details are now read from far more sites. Only events labelled generically were being recognised, so a talk tagged as an "education event" was missed.
+- All-day events no longer start and end on the same date, which Google Calendar treats as zero length.
+- Editing works whether you reply to the bot or send a normal message. Only a reply worked before.
+- The bot always answers a direct message instead of ignoring what it didn't understand.
+- A dropped connection no longer makes Confirm, Edit and Cancel do nothing.
+- Underscores, asterisks and ampersands in event details no longer break the bot's reply.
+- If sending updated details fails, you can send them again without tapping Edit first.
 
 ### Changed
 
-- The bot now reads an event out of the page's own published details rather than interpreting the page text. Most event sites publish them, and for those the preview is instant and the date, time and location are exactly what the page says. For the pages that don't, the bot hands you over to the app's form instead of guessing — so a link either comes back right or comes back honestly.
-- When editing, a date or time the bot can't read (like `time: 5pm`) is now called out, saying what format it needs. It used to be accepted and then quietly ignored.
-- The bot says something useful when it doesn't understand you, instead of "Not sure what to do with that". A mistyped command suggests the real one, and sending a bare event link tells you the exact command to send.
-- Events waiting for confirmation now stay open for 2 hours instead of 30 minutes.
+- Events are read from the page's own published details, so previews are instant and exact. Pages without them hand you the app's form instead of a guess.
+- Dates and times the bot can't read are flagged when editing, with the format it needs. They used to be accepted and ignored.
+- Unrecognised messages get a useful reply. A mistyped command suggests the real one.
+- Events waiting for confirmation stay open for 2 hours instead of 30 minutes.
 
 ## [0.1.0] - 2026-07-15
 
 ### Added
 
-- `/add_event <link>` — send an event link and the bot extracts the details and adds it to the shared EW calendar, with a confirm step before anything is written.
-- `/add_event` on its own — the bot waits for you to send the link next.
-- `/today`, `/tomorrow`, `/week`, `/month` — see what's coming up.
-- `/view` — get the calendar's link.
+- `/add_event <link>` adds an event to the shared EW calendar. The bot reads the page and asks you to confirm before writing anything.
+- `/add_event` on its own waits for you to send the link next.
+- `/today`, `/tomorrow`, `/week` and `/month` show what's coming up.
+- `/view` gets the calendar's link.
 - Tap 🔔 on any listed event to get a reminder before it starts.
-- `/reminders` — see and cancel the reminders you've set.
-- `/blast` — admin-only broadcast to everyone who has DM'd the bot, with a preview and confirm step.
+- `/reminders` shows and cancels the reminders you've set.
+- `/blast` broadcasts to everyone who has DM'd the bot, with a preview and confirm step. Admin only.
