@@ -9,6 +9,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "release": "node scripts/release.js",
+    "sync-versions": "node scripts/sync-versions.js",
     "reset-testers": "node scripts/reset-testers.js"
   },
   "dependencies": {

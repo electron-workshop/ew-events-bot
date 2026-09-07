@@ -8,6 +8,8 @@ one readable announcement rather than a message every time something changes.
 - `package.json` `version` is the source of truth. `src/version.js` reads it.
 - `CHANGELOG.md` holds the notes for every version, newest first.
 - A git tag (`v0.2.0`) marks the commit that version was cut from.
+- The web app's `public/versions.json` is a copy of the two above, pushed there
+  by `npm run sync-versions` so its version panel has something to show.
 
 ## Day to day
 
@@ -31,11 +33,22 @@ with today's date, commits, and tags. It stops if the working tree is dirty, if
 there's nothing under `Unreleased`, or if the tag already exists. It does not
 push.
 
+It also writes the new version and the parsed changelog into the web app's
+`public/versions.json`, which is what its version panel shows. That's a
+different repo — assumed to be `../ew-events-webapp`, override with
+`WEBAPP_DIR` — so it leaves that checkout dirty for you to commit. If the
+directory isn't there it prints the JSON instead, and `npm run sync-versions`
+redoes it on its own at any time.
+
 Then:
 
 ```
-git push && git push --tags
+git push && git push --tags                      # here
+cd ../ew-events-webapp && git add public/versions.json && git commit && git push
 ```
+
+Forgetting the second line isn't fatal — the panel just keeps showing the
+previous bot version until you push it.
 
 Deploy (Coolify redeploys on the push), then run `/release` in
 the bot as the admin. It reads the current version's changelog section, shows you

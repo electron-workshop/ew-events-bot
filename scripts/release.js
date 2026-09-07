@@ -5,10 +5,14 @@
 //   npm run release minor      0.1.0 -> 0.2.0
 //   npm run release 0.4.0      explicit
 //
+// Also refreshes the web app's public/versions.json in the sibling checkout,
+// which you then commit and push over there.
+//
 // Then: git push && git push --tags, deploy, and run /release in the bot.
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { syncVersions } from "./sync-versions.js";
 
 const pkgPath = fileURLToPath(new URL("../package.json", import.meta.url));
 const changelogPath = fileURLToPath(new URL("../CHANGELOG.md", import.meta.url));
@@ -83,4 +87,9 @@ git("commit", "-m", `Release v${version}`);
 git("tag", "-a", `v${version}`, "-m", `v${version}`);
 
 console.log(`✓ Released v${version}`);
+
+// The web app's version panel reads a static file in that repo, so the release
+// isn't finished until that file catches up.
+syncVersions();
+
 console.log("  Next: git push && git push --tags, deploy, then /release in the bot.");

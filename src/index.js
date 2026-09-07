@@ -2,7 +2,6 @@ import { createBot } from "./telegram/bot.js";
 import { config } from "./config.js";
 import { log } from "./logger.js";
 import { startReminderScheduler } from "./services/reminderScheduler.js";
-import { startVersionAnnouncer } from "./services/announceVersion.js";
 import { dataDir } from "./store/dataDir.js";
 import { version } from "./version.js";
 
@@ -10,7 +9,6 @@ const bot = createBot();
 
 bot.launch();
 startReminderScheduler(bot);
-startVersionAnnouncer();
 log(
   "startup",
   `calendar: ${config.googleCalendarId}, timezone: ${config.timezone}, ` +
