@@ -10,6 +10,11 @@ Highlights section the whole entry gets sent, which is usually too long.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
+
+### Added
+
+- The command menu in Telegram now lists every command people can use, `/feedback` and `/settings` included. The bot publishes the list itself on startup, so the menu can no longer fall behind what the code actually does.
+
 ## [0.2.0] - 2026-09-06
 
 ### Highlights

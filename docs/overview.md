@@ -45,6 +45,20 @@ is what lets it run as a small container anywhere.
   for a bot token. If the bot is running on Coolify, it must not also be running
   under pm2 anywhere else, or the two will fight over updates.
 
+## The command menu
+
+The list behind Telegram's menu button is published by the bot itself, from
+`src/telegram/commandMenu.js`, on every startup. Adding a `bot.command(...)` and
+a line in that file is all it takes to publish a command; there is no BotFather
+`/setcommands` step any more.
+
+`/blast` and `/release` are deliberately not in it. Both message every user, so
+they stay unlisted and get typed from memory. The menu is not what gates them:
+`isAdmin.js` does, and it does not care whether a command is listed.
+
+A failure here is logged and swallowed. The menu is cosmetic, the commands still
+work when typed, and a Telegram hiccup must not stop the bot starting.
+
 ## Related: the web app
 
 `../ew-events-webapp` is the same calendar as a web page and a Telegram Mini
